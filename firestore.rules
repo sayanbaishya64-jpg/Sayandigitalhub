@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && 
+        request.auth.token.email != null && 
+        request.auth.token.email.lower() == 'sayanbaishya64@gmail.com';
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super_admin'])
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 1. User Profiles Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId) || isAdmin() || true;
+    }
+
+    // 2. Posts Collection (Jobs, Scholarships, Results, Exam Routine, Admissions)
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 3. Study Materials Collection
+    match /studyMaterials/{materialId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 4. Digital Services Collection
+    match /digitalServices/{serviceId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 5. Appointments Collection
+    match /appointments/{appointmentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 6. Categories Collection
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 7. Announcements Collection
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 8. Content Templates Collection
+    match /contentTemplates/{templateId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 9. Website Settings Collection
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 10. Audit Logs Collection
+    match /auditLogs/{logId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 11. Website Sections Collection
+    match /websiteSections/{sectionId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 12. Availability Rules Collection
+    match /availabilityRules/{ruleId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 13. Test / Health Check
+    match /test/{testId} {
+      allow read: if true;
+    }
+  }
+}

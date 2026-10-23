@@ -1,0 +1,6 @@
+{
+  "name": "Sayan Digital Hub",
+  "description": "Complete Educational Portal, Digital Services Platform, Customizable Admin Dashboard and Content Management System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

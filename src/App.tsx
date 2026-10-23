@@ -1,0 +1,185 @@
+import React, { useState, useEffect } from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { SearchModal } from './components/SearchModal';
+import { AuthModal } from './components/AuthModal';
+import { WhatsAppSupportWidget } from './components/WhatsAppSupportWidget';
+
+import { HomePage } from './pages/public/HomePage';
+import { JobsPage } from './pages/public/JobsPage';
+import { ScholarshipsPage } from './pages/public/ScholarshipsPage';
+import { ExamUpdatesPage } from './pages/public/ExamUpdatesPage';
+import { AdmitCardsPage } from './pages/public/AdmitCardsPage';
+import { ResultsPage } from './pages/public/ResultsPage';
+import { AdmissionUpdatesPage } from './pages/public/AdmissionUpdatesPage';
+import { StudyMaterialsPage } from './pages/public/StudyMaterialsPage';
+import { DigitalServicesPage } from './pages/public/DigitalServicesPage';
+import { BookAppointmentPage } from './pages/public/BookAppointmentPage';
+import { AboutUsPage, ContactUsPage, PrivacyPolicyPage, TermsPage, DisclaimerPage, OtpConsentPolicyPage } from './pages/public/AboutContactLegal';
+import { ContentDetailPage } from './pages/public/ContentDetailPage';
+import { CustomerDashboard } from './pages/customer/CustomerDashboard';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+
+function MainApp() {
+  const { currentUser, websiteSections } = useApp();
+  const [activePage, setActivePage] = useState<string>('home');
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(!currentUser); // Automatically prompt first-visit registration if unauthenticated
+
+  useEffect(() => {
+    if (currentUser) {
+      setAuthOpen(false);
+    }
+  }, [currentUser]);
+
+  const handleSelectPost = (postId: string) => {
+    setSelectedPostId(postId);
+    setActivePage('detail');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPage = () => {
+    // Check if activePage matches any published custom section slug
+    const matchedSection = (websiteSections || []).find(s => s.slug === activePage && s.status === 'published');
+    if (matchedSection) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+          {matchedSection.bannerImage && (
+            <div className="w-full h-64 rounded-3xl overflow-hidden shadow-xl">
+              <img src={matchedSection.bannerImage} alt={matchedSection.title} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-md border border-slate-200 dark:border-slate-800 space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">
+              Dynamic Section
+            </span>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">{matchedSection.title}</h1>
+            <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">{matchedSection.description}</p>
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+              <span>Layout Preset: <strong className="uppercase text-indigo-600">{matchedSection.layout}</strong></span>
+              <span className="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full">Published & Active</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Protected routes check for unauthenticated visitors
+    if ((activePage === 'customer-dashboard' || activePage === 'admin-dashboard' || activePage === 'book-appointment') && !currentUser) {
+      return (
+        <div className="max-w-md mx-auto my-20 bg-[#0F172A] border border-[#263B5A] p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
+          <h2 className="text-xl font-black text-[#00D4FF]">Registration Required</h2>
+          <p className="text-xs text-[#94A3B8]">
+            You must register or sign in to access protected portal services, bookings, and dashboards.
+          </p>
+          <button
+            onClick={() => setAuthOpen(true)}
+            className="px-6 py-3 bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white font-bold rounded-xl text-sm shadow-lg shadow-[#2563EB]/30 border border-[#00D4FF]/40 cursor-pointer"
+          >
+            Sign Up / Sign In Now
+          </button>
+        </div>
+      );
+    }
+
+    if (activePage === 'admin-dashboard' && !['super_admin', 'admin', 'web_manager', 'web_editor'].includes(currentUser?.role as string)) {
+      return (
+        <div className="max-w-md mx-auto my-20 bg-rose-950/40 border border-rose-500/40 p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
+          <h2 className="text-xl font-black text-rose-400">Access Denied</h2>
+          <p className="text-xs text-rose-200">
+            Administrator permissions are required to view the Admin Dashboard.
+          </p>
+          <button
+            onClick={() => setActivePage('home')}
+            className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
+          >
+            Return to Homepage
+          </button>
+        </div>
+      );
+    }
+
+    switch (activePage) {
+      case 'home':
+        return <HomePage setActivePage={setActivePage} onSelectPost={handleSelectPost} />;
+      case 'jobs':
+        return <JobsPage onSelectPost={handleSelectPost} />;
+      case 'scholarships':
+        return <ScholarshipsPage onSelectPost={handleSelectPost} />;
+      case 'exam-updates':
+        return <ExamUpdatesPage onSelectPost={handleSelectPost} />;
+      case 'admit-cards':
+        return <AdmitCardsPage onSelectPost={handleSelectPost} />;
+      case 'results':
+        return <ResultsPage onSelectPost={handleSelectPost} />;
+      case 'admissions':
+        return <AdmissionUpdatesPage onSelectPost={handleSelectPost} />;
+      case 'study-materials':
+        return <StudyMaterialsPage />;
+      case 'digital-services':
+        return <DigitalServicesPage setActivePage={setActivePage} />;
+      case 'book-appointment':
+        return <BookAppointmentPage />;
+      case 'about-us':
+        return <AboutUsPage />;
+      case 'contact-us':
+        return <ContactUsPage />;
+      case 'privacy-policy':
+        return <PrivacyPolicyPage />;
+      case 'terms':
+        return <TermsPage />;
+      case 'disclaimer':
+        return <DisclaimerPage />;
+      case 'otp-consent':
+        return <OtpConsentPolicyPage />;
+      case 'customer-dashboard':
+        return <CustomerDashboard />;
+      case 'admin-dashboard':
+        return <AdminDashboard setActivePage={setActivePage} />;
+      case 'detail':
+        return <ContentDetailPage postId={selectedPostId || ''} onBack={() => setActivePage('home')} />;
+      default:
+        return <HomePage setActivePage={setActivePage} onSelectPost={handleSelectPost} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-300">
+      <Navbar 
+        activePage={activePage} 
+        setActivePage={(page) => { setActivePage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenAuth={() => setAuthOpen(true)}
+      />
+
+      <main className="flex-grow">
+        {renderPage()}
+      </main>
+
+      <Footer setActivePage={(page) => { setActivePage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+
+      <SearchModal 
+        isOpen={searchOpen} 
+        onClose={() => setSearchOpen(false)} 
+        onSelectPost={handleSelectPost} 
+      />
+
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+      />
+
+      <WhatsAppSupportWidget activePage={activePage} />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <MainApp />
+    </AppProvider>
+  );
+}
