@@ -1,218 +1,66 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "User profile with role-based access control for SDH",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "name": { "type": "string", "maxLength": 128 },
-        "email": { "type": "string", "format": "email", "maxLength": 128 },
-        "role": { "type": "string", "enum": ["super_admin", "admin", "customer"] },
-        "status": { "type": "string", "enum": ["active", "suspended"] },
-        "phone": { "type": "string", "maxLength": 32 },
-        "avatarUrl": { "type": "string", "maxLength": 1024 },
-        "createdAt": { "type": "string", "maxLength": 64 }
-      },
-      "required": ["id", "name", "email", "role", "status"]
-    },
     "Post": {
       "title": "Post",
-      "description": "Portal content including jobs, scholarships, results, admit cards, and admissions",
+      "description": "Content posts like jobs, scholarships, etc.",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "title": { "type": "string", "maxLength": 256 },
-        "bengaliTitle": { "type": "string", "maxLength": 256 },
-        "slug": { "type": "string", "maxLength": 128 },
-        "contentType": { "type": "string", "enum": ["job", "scholarship", "exam", "admit", "result", "admission", "material", "service", "news", "other"] },
-        "summary": { "type": "string", "maxLength": 1024 },
-        "bengaliSummary": { "type": "string", "maxLength": 1024 },
-        "content": { "type": "string", "maxLength": 20000 },
-        "bengaliContent": { "type": "string", "maxLength": 20000 },
-        "categoryId": { "type": "string", "maxLength": 128 },
-        "organization": { "type": "string", "maxLength": 256 },
-        "totalVacancies": { "type": "string", "maxLength": 64 },
-        "qualification": { "type": "string", "maxLength": 256 },
-        "ageLimit": { "type": "string", "maxLength": 128 },
-        "applicationFee": { "type": "string", "maxLength": 128 },
-        "lastDate": { "type": "string", "maxLength": 64 },
-        "officialUrl": { "type": "string", "maxLength": 1024 },
-        "applyUrl": { "type": "string", "maxLength": 1024 },
-        "amount": { "type": "string", "maxLength": 128 },
-        "examDate": { "type": "string", "maxLength": 64 },
-        "featuredImage": { "type": "string", "maxLength": 2048 },
-        "authorId": { "type": "string", "maxLength": 128 },
-        "status": { "type": "string", "enum": ["draft", "pending", "approved", "scheduled", "published", "archived", "rejected"] },
-        "createdAt": { "type": "string", "maxLength": 64 },
-        "updatedAt": { "type": "string", "maxLength": 64 },
-        "publishedAt": { "type": "string", "maxLength": 64 }
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "contentType": { "type": "string" },
+        "summary": { "type": "string" },
+        "content": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
-      "required": ["id", "title", "slug", "contentType", "status"]
+      "required": ["id", "title", "slug", "contentType", "summary", "content", "categoryId", "authorId", "status", "createdAt", "updatedAt"]
     },
-    "StudyMaterial": {
-      "title": "StudyMaterial",
-      "description": "Educational notes, syllabus, and Google Drive PDFs",
+    "User": {
+      "title": "User",
+      "description": "Application user",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "topicName": { "type": "string", "maxLength": 256 },
-        "bengaliTopicName": { "type": "string", "maxLength": 256 },
-        "subject": { "type": "string", "maxLength": 128 },
-        "shortDescription": { "type": "string", "maxLength": 1024 },
-        "detailedDescription": { "type": "string", "maxLength": 10000 },
-        "classLevel": { "type": "string", "maxLength": 128 },
-        "examination": { "type": "string", "maxLength": 128 },
-        "author": { "type": "string", "maxLength": 128 },
-        "language": { "type": "string", "maxLength": 64 },
-        "fileUrl": { "type": "string", "maxLength": 2048 },
-        "fileName": { "type": "string", "maxLength": 256 },
-        "fileType": { "type": "string", "maxLength": 32 },
-        "accessPermission": { "type": "string", "maxLength": 64 },
-        "imageUrl": { "type": "string", "maxLength": 2048 },
-        "createdAt": { "type": "string", "maxLength": 64 }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["id", "topicName", "subject", "fileUrl"]
-    },
-    "DigitalService": {
-      "title": "DigitalService",
-      "description": "Online form fillup, government schemes, and citizen services",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "name": { "type": "string", "maxLength": 256 },
-        "bengaliName": { "type": "string", "maxLength": 256 },
-        "category": { "type": "string", "maxLength": 128 },
-        "shortDescription": { "type": "string", "maxLength": 1024 },
-        "detailedDescription": { "type": "string", "maxLength": 10000 },
-        "icon": { "type": "string", "maxLength": 64 },
-        "imageUrl": { "type": "string", "maxLength": 2048 },
-        "eligibility": { "type": "string", "maxLength": 512 },
-        "charges": { "type": "string", "maxLength": 128 },
-        "processingTime": { "type": "string", "maxLength": 128 },
-        "availability": { "type": "boolean" },
-        "bookingRequired": { "type": "boolean" }
-      },
-      "required": ["id", "name", "category", "charges"]
+      "required": ["id", "name", "email", "role", "status", "createdAt"]
     },
     "Appointment": {
       "title": "Appointment",
-      "description": "Service booking appointments requested by customers",
+      "description": "User booking appointment",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "serviceId": { "type": "string", "maxLength": 128 },
-        "serviceName": { "type": "string", "maxLength": 256 },
-        "customerId": { "type": "string", "maxLength": 128 },
-        "customerName": { "type": "string", "maxLength": 128 },
-        "customerEmail": { "type": "string", "format": "email", "maxLength": 128 },
-        "customerPhone": { "type": "string", "maxLength": 32 },
-        "date": { "type": "string", "maxLength": 32 },
-        "timeSlot": { "type": "string", "maxLength": 64 },
-        "status": { "type": "string", "enum": ["pending", "confirmed", "rescheduled", "completed", "cancelled"] },
-        "notes": { "type": "string", "maxLength": 2048 },
-        "createdAt": { "type": "string", "maxLength": 64 }
+        "id": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "date": { "type": "string" },
+        "timeSlot": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["id", "serviceName", "customerName", "customerEmail", "customerPhone", "date", "timeSlot", "status"]
-    },
-    "Category": {
-      "title": "Category",
-      "description": "Portal taxonomy and categories",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "name": { "type": "string", "maxLength": 128 },
-        "bengaliName": { "type": "string", "maxLength": 128 },
-        "slug": { "type": "string", "maxLength": 128 },
-        "description": { "type": "string", "maxLength": 512 },
-        "icon": { "type": "string", "maxLength": 64 },
-        "contentType": { "type": "string", "maxLength": 64 }
-      },
-      "required": ["id", "name", "slug"]
-    },
-    "Announcement": {
-      "title": "Announcement",
-      "description": "Portal breaking news and top alert announcements",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "title": { "type": "string", "maxLength": 256 },
-        "bengaliTitle": { "type": "string", "maxLength": 256 },
-        "text": { "type": "string", "maxLength": 1024 },
-        "bengaliText": { "type": "string", "maxLength": 1024 },
-        "startDate": { "type": "string", "maxLength": 64 },
-        "endDate": { "type": "string", "maxLength": 64 },
-        "linkUrl": { "type": "string", "maxLength": 512 },
-        "active": { "type": "boolean" }
-      },
-      "required": ["id", "title", "active"]
-    },
-    "ContentTemplate": {
-      "title": "ContentTemplate",
-      "description": "Publishing schema templates for quick content creation",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "maxLength": 128 },
-        "name": { "type": "string", "maxLength": 128 },
-        "contentType": { "type": "string", "maxLength": 64 },
-        "description": { "type": "string", "maxLength": 512 }
-      },
-      "required": ["id", "name", "contentType"]
-    },
-    "WebsiteSettings": {
-      "title": "WebsiteSettings",
-      "description": "Global website configuration, contacts, branding",
-      "type": "object",
-      "properties": {
-        "siteName": { "type": "string", "maxLength": 128 },
-        "tagline": { "type": "string", "maxLength": 256 },
-        "bengaliTagline": { "type": "string", "maxLength": 256 },
-        "contactEmail": { "type": "string", "format": "email", "maxLength": 128 },
-        "contactPhone": { "type": "string", "maxLength": 32 },
-        "contactNumber": { "type": "string", "maxLength": 32 },
-        "address": { "type": "string", "maxLength": 256 },
-        "location": { "type": "string", "maxLength": 256 },
-        "copyrightText": { "type": "string", "maxLength": 256 }
-      },
-      "required": ["siteName", "contactEmail", "contactNumber", "location"]
+      "required": ["id", "serviceId", "customerId", "date", "timeSlot", "status", "createdAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "UserProfile",
-      "description": "User accounts with roles (Super Admin, Admin, Customer)"
-    },
-    "/posts/{postId}": {
+    "posts": {
       "schema": "Post",
-      "description": "Articles, job updates, exam results, and notifications"
+      "description": "Collection of all content posts"
     },
-    "/studyMaterials/{materialId}": {
-      "schema": "StudyMaterial",
-      "description": "Downloadable notes and Google Drive syllabus files"
+    "users": {
+      "schema": "User",
+      "description": "Collection of application users"
     },
-    "/digitalServices/{serviceId}": {
-      "schema": "DigitalService",
-      "description": "Digital hub service catalog and application assistance offerings"
-    },
-    "/appointments/{appointmentId}": {
+    "appointments": {
       "schema": "Appointment",
-      "description": "Customer booked service assistance appointments"
-    },
-    "/categories/{categoryId}": {
-      "schema": "Category",
-      "description": "Taxonomy classifications"
-    },
-    "/announcements/{announcementId}": {
-      "schema": "Announcement",
-      "description": "Top marquee alert announcements"
-    },
-    "/contentTemplates/{templateId}": {
-      "schema": "ContentTemplate",
-      "description": "Reusable content structure templates"
-    },
-    "/settings/{settingId}": {
-      "schema": "WebsiteSettings",
-      "description": "Global website contact details and settings"
+      "description": "Collection of bookings"
     }
   }
 }

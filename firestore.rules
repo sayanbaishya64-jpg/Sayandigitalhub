@@ -1,102 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Global Helper: Check if user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    
+    // Global Helper: Check if user is a verified super admin
     function isSuperAdmin() {
-      return isSignedIn() && getUserData().role == 'super_admin';
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin' &&
+             request.auth.token.email_verified == true;
     }
-
+    
+    // Global Helper: Check if user is an admin or super admin
     function isAdmin() {
-      return isSignedIn() && (getUserData().role in ['admin', 'super_admin']);
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin') &&
+             request.auth.token.email_verified == true;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    // 1. User Profiles Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId) || isSuperAdmin();
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId; // Basic self-management
+      
+      // Super Admin protection
+      match /super-admin-dashboard {
+        allow read, write: if isSuperAdmin();
+      }
     }
 
-    // 2. Posts Collection
     match /posts/{postId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin(); // Only admins can create/edit content
     }
-
-    // 3. Study Materials Collection
-    match /studyMaterials/{materialId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 4. Digital Services Collection
-    match /digitalServices/{serviceId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 5. Appointments Collection
-    match /appointments/{appointmentId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.customerId || isAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == resource.data.customerId || isAdmin());
-    }
-
-    // 6. Categories Collection
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 7. Announcements Collection
-    match /announcements/{announcementId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 8. Content Templates Collection
-    match /contentTemplates/{templateId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // 9. Website Settings Collection
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 10. Audit Logs Collection
-    match /auditLogs/{logId} {
-      allow read: if isSuperAdmin();
-      allow write: if false;
-    }
-
-    // 11. Website Sections Collection
-    match /websiteSections/{sectionId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 12. Availability Rules Collection
-    match /availabilityRules/{ruleId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // 13. Test / Health Check
-    match /test/{testId} {
-      allow read: if true;
+    
+    match /{document=**} {
+      allow read, write: if false; // Default deny
     }
   }
 }

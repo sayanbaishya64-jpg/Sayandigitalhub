@@ -25,12 +25,14 @@ export const WhatsAppSupportWidget: React.FC<WhatsAppSupportWidgetProps> = ({
   const [selectedTopicKey, setSelectedTopicKey] = useState<string>('');
   const [hasUnreadNotification, setHasUnreadNotification] = useState(true);
 
+  // Define checks
+  const isEnabled = whatsappConfig.enabled;
+  const allowed = whatsappConfig.allowedPages || ['all'];
+  const isAllowedOnThisPage = allowed.includes('all') || allowed.includes(activePage);
+
   // Sync contextual prefill whenever activePage or customSectionTitle changes
   useEffect(() => {
-    if (!whatsappConfig.enabled) return;
-    const allowed = whatsappConfig.allowedPages || ['all'];
-    const isAllowedOnThisPage = allowed.includes('all') || allowed.includes(activePage);
-    if (!isAllowedOnThisPage) return;
+    if (!isEnabled || !isAllowedOnThisPage) return;
 
     const contextualMessage = getContextualPrefill(whatsappConfig, activePage, customSectionTitle);
     setUserQuery(contextualMessage);
@@ -42,17 +44,10 @@ export const WhatsAppSupportWidget: React.FC<WhatsAppSupportWidgetProps> = ({
     else if (activePage.includes('appointment')) setSelectedTopicKey('book-appointment');
     else if (activePage.includes('material')) setSelectedTopicKey('study-materials');
     else setSelectedTopicKey('general');
-  }, [activePage, customSectionTitle, whatsappConfig]);
+  }, [activePage, customSectionTitle, whatsappConfig, isEnabled, isAllowedOnThisPage]);
 
   // If globally disabled, do not render
-  if (!whatsappConfig.enabled) {
-    return null;
-  }
-
-  // Check if current page is permitted
-  const allowed = whatsappConfig.allowedPages || ['all'];
-  const isAllowedOnThisPage = allowed.includes('all') || allowed.includes(activePage);
-  if (!isAllowedOnThisPage) {
+  if (!isEnabled || !isAllowedOnThisPage) {
     return null;
   }
 

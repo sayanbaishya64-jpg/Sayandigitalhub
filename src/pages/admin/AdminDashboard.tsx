@@ -21,7 +21,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
     digitalServices, addDigitalService, deleteDigitalService,
     appointments, updateAppointmentStatus,
     users, updateUserRole, toggleUserStatus,
-    settings, updateSettings, auditLogs, language,
+    settings, updateSettings, updateLogo, auditLogs, language,
     templates, addTemplate, deleteTemplate,
     websiteSections, addSection, updateSection, deleteSection,
     whatsappConfig, updateWhatsAppConfig

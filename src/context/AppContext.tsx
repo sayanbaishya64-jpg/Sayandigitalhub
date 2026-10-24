@@ -664,10 +664,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('sdh_current_user');
-    return saved ? JSON.parse(saved) : null; // Do not default to Super Admin
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Single-active-device session revocation watcher is now defined after users
 
   // Single-active-device session revocation watcher
   useEffect(() => {
@@ -780,6 +779,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return list;
   });
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Here, we would ideally fetch the user's role from Firestore,
+        // but for now, we'll try to find the user in our local "users" state
+        // to get the role, assuming the user already exists.
+        // In a real app, you'd fetch this from the database using firebaseUser.uid.
+        const foundUser = users.find(u => u.email === firebaseUser.email);
+        if (foundUser) {
+          setCurrentUser(foundUser);
+        } else {
+          // If not found, perhaps create a basic user record?
+          // For now, set a basic user with 'customer' role.
+          setCurrentUser({
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Customer',
+            email: firebaseUser.email || '',
+            role: 'customer',
+            status: 'active',
+            createdAt: new Date().toISOString()
+          });
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+    return unsubscribe;
+  }, [users]);
+
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const saved = localStorage.getItem('sdh_audit_logs');
     return saved ? JSON.parse(saved) : [
@@ -824,13 +852,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sdh_language', language);
   }, [language]);
 
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('sdh_current_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('sdh_current_user');
-    }
-  }, [currentUser]);
 
   useEffect(() => { localStorage.setItem('sdh_posts', JSON.stringify(posts)); }, [posts]);
   useEffect(() => { localStorage.setItem('sdh_study_materials', JSON.stringify(studyMaterials)); }, [studyMaterials]);

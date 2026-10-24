@@ -1,12 +1,12 @@
 {
-  "projectId": "hale-dragon-3ghtt",
-  "appId": "1:360326524410:web:4c523982c5502501db0843",
-  "apiKey": "AIzaSyDtAm8Yd24S4o15eN4oIPLhUMagmvhsz3c",
-  "authDomain": "hale-dragon-3ghtt.firebaseapp.com",
+  "projectId": "sayan-digitalhub",
+  "appId": "1:146464378026:web:2f6acb676517925c5694d3",
+  "apiKey": "AIzaSyBdH0snoYss1o3q05RtM7F6EhkRd3tfUq4",
+  "authDomain": "sayan-digitalhub.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-sayandigitalhub-87c096d4-23f9-437e-b2c9-e5d1bc64a5cd",
-  "storageBucket": "hale-dragon-3ghtt.firebasestorage.app",
-  "messagingSenderId": "360326524410",
+  "storageBucket": "sayan-digitalhub.firebasestorage.app",
+  "messagingSenderId": "146464378026",
   "measurementId": "",
-  "oAuthClientId": "360326524410-kthii7iascqjppd8hln9mn5h9joqmln6.apps.googleusercontent.com",
+  "oAuthClientId": "146464378026-tceqhp4osemeaqlti5tnfbfa5aoj614e.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
