@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translations } from '../../i18n/translations';
+import { ShareLinkButton } from '../../components/ShareLinkButton';
+import { Post } from '../../types';
+import { db } from '../../lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { 
-  ArrowLeft, Building, ExternalLink, Globe, AlertCircle
+  ArrowLeft, Building, ExternalLink, Globe, AlertCircle, Loader2
 } from 'lucide-react';
 
 interface ContentDetailPageProps {
@@ -11,16 +15,116 @@ interface ContentDetailPageProps {
 }
 
 export const ContentDetailPage: React.FC<ContentDetailPageProps> = ({ postId, onBack }) => {
-  const { posts, language, setLanguage, currentUser } = useApp();
+  const { posts, language, setLanguage, currentUser, isPostsLoaded } = useApp();
   const t = translations[language];
 
-  const post = posts.find(p => p.id === postId || p.slug === postId);
+  const [viewState, setViewState] = useState<'loading' | 'found' | 'not_found'>('loading');
+  const [activePost, setActivePost] = useState<Post | null>(null);
 
-  // Is post accessible?
-  const isAdmin = ['super_admin', 'admin', 'web_manager', 'web_editor'].includes(currentUser?.role as string);
-  const isAccessible = post && (post.status === 'published' || isAdmin);
+  useEffect(() => {
+    let isMounted = true;
 
-  if (!post || !isAccessible) {
+    const resolvePost = async () => {
+      if (!postId) {
+        if (isMounted) setViewState('not_found');
+        return;
+      }
+
+      const cleanTarget = postId.trim();
+
+      // 1. Search in App Context posts array
+      const matchedLocal = posts.find(p => 
+        p.id === cleanTarget || 
+        p.slug === cleanTarget ||
+        (p.id && p.id.toLowerCase() === cleanTarget.toLowerCase()) ||
+        (p.slug && p.slug.toLowerCase() === cleanTarget.toLowerCase())
+      );
+
+      const isAdmin = ['super_admin', 'admin', 'web_manager', 'web_editor'].includes(currentUser?.role as string);
+
+      if (matchedLocal) {
+        if (matchedLocal.status === 'published' || isAdmin) {
+          if (isMounted) {
+            setActivePost(matchedLocal);
+            setViewState('found');
+          }
+          return;
+        }
+      }
+
+      // 2. If not found locally but posts are still loading from Firestore snapshot, keep loading state
+      if (!isPostsLoaded) {
+        if (isMounted) setViewState('loading');
+        return;
+      }
+
+      // 3. Fallback: Query Firestore directly by Document ID
+      try {
+        const docRef = doc(db, 'posts', cleanTarget);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const remotePost = { ...docSnap.data(), id: docSnap.id } as Post;
+          if (remotePost.status === 'published' || isAdmin) {
+            if (isMounted) {
+              setActivePost(remotePost);
+              setViewState('found');
+            }
+            return;
+          }
+        }
+
+        // 4. Fallback: Query Firestore collection by 'slug' field
+        const slugQuery = query(collection(db, 'posts'), where('slug', '==', cleanTarget));
+        const slugSnap = await getDocs(slugQuery);
+
+        if (!slugSnap.empty) {
+          const firstDoc = slugSnap.docs[0];
+          const remotePost = { ...firstDoc.data(), id: firstDoc.id } as Post;
+          if (remotePost.status === 'published' || isAdmin) {
+            if (isMounted) {
+              setActivePost(remotePost);
+              setViewState('found');
+            }
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Direct Firestore post resolution warning:', err);
+      }
+
+      // 5. Final fallback check if all remote/local searches failed
+      if (isMounted) {
+        setViewState('not_found');
+      }
+    };
+
+    resolvePost();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postId, posts, isPostsLoaded, currentUser]);
+
+  // Loading state UI
+  if (viewState === 'loading') {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto border border-indigo-100 dark:border-indigo-900 shadow-sm animate-pulse">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Loading Post Details</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            Retrieving published content from SAYAN DIGITAL HUB...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not Found state UI
+  if (viewState === 'not_found' || !activePost) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center space-y-6">
         <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-800">
@@ -42,6 +146,7 @@ export const ContentDetailPage: React.FC<ContentDetailPageProps> = ({ postId, on
     );
   }
 
+  const post = activePost;
   const title = language === 'bn' && post.bengaliTitle ? post.bengaliTitle : post.title;
   const summary = language === 'bn' && post.bengaliSummary ? post.bengaliSummary : post.summary;
   const content = language === 'bn' && post.bengaliContent ? post.bengaliContent : post.content;
@@ -50,7 +155,7 @@ export const ContentDetailPage: React.FC<ContentDetailPageProps> = ({ postId, on
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Navigation Header */}
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#2563EB] bg-white dark:bg-[#111827] px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-[#263449] transition cursor-pointer"
@@ -58,15 +163,8 @@ export const ContentDetailPage: React.FC<ContentDetailPageProps> = ({ postId, on
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/?postId=${post.id}`);
-              alert('Link copied successfully!');
-            }}
-            className="flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
-          >
-            Share Post
-          </button>
+          
+          <ShareLinkButton post={post} />
         </div>
 
         <div className="flex items-center gap-2">

@@ -953,13 +953,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: Post[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as Post);
+          const data = docSnap.data() as Post;
+          loaded.push({
+            ...data,
+            id: data.id || docSnap.id
+          });
         });
         loaded.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setPosts(loaded);
+        
+        // Merge with initialPosts if initialPosts are missing from Firestore
+        const loadedIds = new Set(loaded.map(p => p.id));
+        const missingInitial = initialPosts.filter(p => !loadedIds.has(p.id));
+        const merged = [...loaded, ...missingInitial];
+
+        setPosts(merged);
         setIsPostsLoaded(true);
       } else {
-        // Only seed if we're authenticated as an admin to prevent conflicts
         if (auth.currentUser) {
           console.log('Database empty, seeding posts...');
           initialPosts.forEach((p) => {
@@ -967,8 +976,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               console.warn('Seeding post error:', err);
             });
           });
-          setPosts(initialPosts); // Update state immediately during seeding
         }
+        setPosts(initialPosts);
         setIsPostsLoaded(true);
       }
     }, (error) => {

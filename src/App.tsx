@@ -34,18 +34,69 @@ function MainApp() {
     }
   }, [currentUser]);
 
-  useEffect(() => {
+  // Parse post identifier from URL (query string, pathname, or hash)
+  const parsePostFromUrl = () => {
     const params = new URLSearchParams(window.location.search);
-    const postId = params.get('postId');
-    if (postId) {
-      setSelectedPostId(postId);
-      setActivePage('detail');
+    const queryPostId = params.get('postId') || params.get('id') || params.get('slug');
+    if (queryPostId) return queryPostId;
+
+    const path = window.location.pathname;
+    const segments = path.split('/').filter(Boolean);
+
+    const staticRoutes = [
+      'home', 'jobs', 'scholarships', 'exam-updates', 'admit-cards',
+      'results', 'admissions', 'study-materials', 'digital-services',
+      'book-appointment', 'about-us', 'contact-us', 'privacy-policy',
+      'terms', 'disclaimer', 'otp-consent', 'customer-dashboard',
+      'admin-dashboard', 'super-admin-dashboard'
+    ];
+
+    if (segments.length >= 2) {
+      return segments[segments.length - 1];
+    } else if (segments.length === 1 && !staticRoutes.includes(segments[0])) {
+      return segments[0];
     }
+
+    if (window.location.hash) {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const hashSegments = hash.split('?')[0].split('/').filter(Boolean);
+      if (hashSegments.length >= 2) {
+        return hashSegments[hashSegments.length - 1];
+      }
+    }
+
+    return null;
+  };
+
+  useEffect(() => {
+    const syncRouteFromUrl = () => {
+      const extractedPostId = parsePostFromUrl();
+      if (extractedPostId) {
+        setSelectedPostId(extractedPostId);
+        setActivePage('detail');
+      } else {
+        const path = window.location.pathname.replace(/^\//, '').split('/')[0];
+        if (path && [
+          'jobs', 'scholarships', 'exam-updates', 'admit-cards', 
+          'results', 'admissions', 'study-materials', 'digital-services', 
+          'book-appointment', 'about-us', 'contact-us', 'privacy-policy', 
+          'terms', 'disclaimer', 'otp-consent', 'customer-dashboard', 
+          'admin-dashboard'
+        ].includes(path)) {
+          setActivePage(path);
+        }
+      }
+    };
+
+    syncRouteFromUrl();
+    window.addEventListener('popstate', syncRouteFromUrl);
+    return () => window.removeEventListener('popstate', syncRouteFromUrl);
   }, []);
 
   const handleSelectPost = (postId: string) => {
     setSelectedPostId(postId);
     setActivePage('detail');
+    window.history.pushState({ postId }, '', `/?postId=${postId}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

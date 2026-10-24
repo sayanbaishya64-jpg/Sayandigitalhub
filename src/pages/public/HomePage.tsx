@@ -5,6 +5,7 @@ import {
   Briefcase, GraduationCap, CalendarCheck, BookOpen, MonitorSmartphone, 
   CalendarClock, Search, ArrowRight, Shield, ChevronRight, CheckCircle2, Sparkles
 } from 'lucide-react';
+import { ShareLinkButton } from '../../components/ShareLinkButton';
 
 interface HomePageProps {
   setActivePage: (page: string) => void;
@@ -283,9 +284,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActivePage, onSelectPost 
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 dark:border-[#263449] flex items-center justify-between text-xs">
-                  <span className="text-slate-500 dark:text-[#A7B2C5]">
-                    Vacancies: <strong className="text-slate-800 dark:text-slate-200">{job.totalVacancies || 'Multiple'}</strong>
-                  </span>
+                  <ShareLinkButton post={job} />
                   <span className="font-bold text-[#2563EB] dark:text-[#00D4FF] group-hover:underline flex items-center gap-1">
                     {t.viewDetails} <ChevronRight className="w-3.5 h-3.5" />
                   </span>
@@ -356,7 +355,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActivePage, onSelectPost 
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 dark:border-[#263449] flex items-center justify-between text-xs">
-                  <span className="text-slate-500 dark:text-[#A7B2C5]">Last Date: {sch.lastDate || 'Open'}</span>
+                  <ShareLinkButton post={sch} />
                   <span className="font-bold text-[#2563EB] dark:text-[#00D4FF] group-hover:underline flex items-center gap-1">
                     {t.viewDetails} <ChevronRight className="w-3.5 h-3.5" />
                   </span>

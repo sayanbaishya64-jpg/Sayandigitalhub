@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translations } from '../../i18n/translations';
 import { FileText, Search, ChevronRight } from 'lucide-react';
+import { ShareLinkButton } from '../../components/ShareLinkButton';
 
 interface AdmitCardsPageProps {
   onSelectPost: (postId: string) => void;
@@ -70,16 +71,7 @@ export const AdmitCardsPage: React.FC<AdmitCardsPageProps> = ({ onSelectPost }) 
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(`${window.location.origin}/?postId=${ad.id}`);
-                    alert('Link copied successfully!');
-                  }}
-                  className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg font-bold hover:bg-indigo-100 transition"
-                >
-                  Share Link
-                </button>
+                <ShareLinkButton post={ad} />
                 <span>Status: <strong className="text-emerald-600">Available</strong></span>
                 <span className="text-purple-600 group-hover:underline flex items-center gap-1 font-bold">
                   Download Admit <ChevronRight className="w-4 h-4" />
