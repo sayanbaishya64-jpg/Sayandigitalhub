@@ -70,6 +70,16 @@ export const AdmissionUpdatesPage: React.FC<AdmissionUpdatesPageProps> = ({ onSe
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(`${window.location.origin}/?postId=${adm.id}`);
+                    alert('Link copied successfully!');
+                  }}
+                  className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg font-bold hover:bg-indigo-100 transition"
+                >
+                  Share Link
+                </button>
                 <span>Deadline: <strong className="text-slate-900">{adm.lastDate || 'Open'}</strong></span>
                 <span className="text-indigo-600 group-hover:underline flex items-center gap-1 font-bold">
                   {t.viewDetails} <ChevronRight className="w-4 h-4" />

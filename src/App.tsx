@@ -34,6 +34,15 @@ function MainApp() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get('postId');
+    if (postId) {
+      setSelectedPostId(postId);
+      setActivePage('detail');
+    }
+  }, []);
+
   const handleSelectPost = (postId: string) => {
     setSelectedPostId(postId);
     setActivePage('detail');

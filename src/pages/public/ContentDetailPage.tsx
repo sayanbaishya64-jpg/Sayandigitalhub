@@ -50,13 +50,24 @@ export const ContentDetailPage: React.FC<ContentDetailPageProps> = ({ postId, on
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Navigation Header */}
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#2563EB] bg-white dark:bg-[#111827] px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-[#263449] transition cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#2563EB] bg-white dark:bg-[#111827] px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-[#263449] transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/?postId=${post.id}`);
+              alert('Link copied successfully!');
+            }}
+            className="flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+          >
+            Share Post
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-[#2563EB]" />
