@@ -10,6 +10,7 @@ import { ContentType, PostStatus, Post, StudyMaterial, DigitalService, ContentTe
 import { buildWhatsAppUrl, validateWhatsAppNumber, formatWhatsAppDisplay, isSupportOnlineNow } from '../../lib/whatsapp';
 import { AvailabilityManagement } from '../../components/AvailabilityManagement';
 import { compressImage } from '../../utils/imageCompressor';
+import { uploadImageToCloudinary, isCloudinaryConfigured } from '../../lib/cloudinary';
 
 interface AdminDashboardProps {
   setActivePage: (page: string) => void;
@@ -687,24 +688,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
       {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
         <div className="space-y-8">
-          {/* Firebase Connection Status Card */}
-          <div className="p-6 rounded-2xl border flex items-center justify-between bg-emerald-50 border-emerald-200 text-emerald-900">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white bg-emerald-600">
-                ✓
+          {/* Firebase & Cloudinary Connection Status Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl border flex items-center justify-between bg-emerald-50 border-emerald-200 text-emerald-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white bg-emerald-600 shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">
+                    Firebase & Firestore Connected
+                  </h4>
+                  <p className="text-[11px] opacity-80 mt-0.5">
+                    Cloud Firestore database active on Project <code className="font-mono font-bold">hale-dragon-3ghtt</code>.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-base">
-                  Firebase & Firestore Connected Successfully
-                </h4>
-                <p className="text-xs opacity-80 mt-0.5">
-                  Connected to Google Cloud Firebase (Project ID: <code className="font-mono font-bold">hale-dragon-3ghtt</code>) with active ABAC Firestore rules.
-                </p>
-              </div>
+              <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-emerald-200 text-emerald-900 shrink-0">
+                Firebase Active
+              </span>
             </div>
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-200 text-emerald-900">
-              Firebase Active
-            </span>
+
+            <div className={`p-5 rounded-2xl border flex items-center justify-between ${
+              isCloudinaryConfigured() 
+                ? 'bg-sky-50 border-sky-200 text-sky-900' 
+                : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shrink-0 ${
+                  isCloudinaryConfigured() ? 'bg-sky-600' : 'bg-indigo-600'
+                }`}>
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">
+                    {isCloudinaryConfigured() ? 'Cloudinary Unsigned Upload Active' : 'Image Optimization Storage Active'}
+                  </h4>
+                  <p className="text-[11px] opacity-80 mt-0.5">
+                    {isCloudinaryConfigured() 
+                      ? `Uploading banners to Cloudinary (${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}).` 
+                      : 'Free Plan Active. Configure VITE_CLOUDINARY_CLOUD_NAME on Netlify to upload to Cloudinary CDN.'}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-bold px-3 py-1 rounded-full shrink-0 ${
+                isCloudinaryConfigured() 
+                  ? 'bg-sky-200 text-sky-900' 
+                  : 'bg-indigo-200 text-indigo-900'
+              }`}>
+                {isCloudinaryConfigured() ? 'Cloudinary CDN Ready' : 'Free Storage Ready'}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2016,8 +2050,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                           onChange={async e => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const compressed = await compressImage(file, 600, 600, 0.8);
-                              updateLogo(compressed);
+                              try {
+                                const uploadRes = await uploadImageToCloudinary(file, { folder: 'sayan_digital_hub/branding' });
+                                updateLogo(uploadRes.url);
+                              } catch (err: any) {
+                                alert(`Logo upload error: ${err.message}`);
+                              }
                             }
                           }}
                         />
@@ -2365,8 +2403,12 @@ service cloud.firestore {
                         onChange={async e => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const compressed = await compressImage(file);
-                            setFeaturedImage(compressed);
+                            try {
+                              const uploadRes = await uploadImageToCloudinary(file, { folder: 'sayan_digital_hub/posts' });
+                              setFeaturedImage(uploadRes.url);
+                            } catch (err: any) {
+                              alert(`Image processing error: ${err.message}`);
+                            }
                           }
                         }}
                       />
@@ -3126,8 +3168,12 @@ service cloud.firestore {
                       onChange={async e => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const compressed = await compressImage(file);
-                          setDirectMatImage(compressed);
+                          try {
+                            const uploadRes = await uploadImageToCloudinary(file, { folder: 'sayan_digital_hub/materials' });
+                            setDirectMatImage(uploadRes.url);
+                          } catch (err: any) {
+                            alert(`Image processing error: ${err.message}`);
+                          }
                         }
                       }}
                     />
@@ -3344,8 +3390,12 @@ service cloud.firestore {
                       onChange={async e => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const compressed = await compressImage(file);
-                          setDirectSrvImage(compressed);
+                          try {
+                            const uploadRes = await uploadImageToCloudinary(file, { folder: 'sayan_digital_hub/services' });
+                            setDirectSrvImage(uploadRes.url);
+                          } catch (err: any) {
+                            alert(`Image processing error: ${err.message}`);
+                          }
                         }
                       }}
                     />

@@ -5,6 +5,7 @@ import {
   WhatsAppConfig, WhatsAppSectionPrefill, AvailabilityRule, AvailabilityRuleType, DEFAULT_HOURLY_TIME_SLOTS
 } from '../types';
 import { compressImage } from '../utils/imageCompressor';
+import { uploadImageToCloudinary } from '../lib/cloudinary';
 import { 
   db, 
   auth, 
@@ -827,8 +828,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addSection = async (secData: Omit<WebsiteSection, 'id'>) => {
     let bannerImage = secData.bannerImage;
-    if (bannerImage && bannerImage.startsWith('data:image')) {
-      bannerImage = await compressImage(bannerImage);
+    if (bannerImage && (bannerImage.startsWith('data:image') || bannerImage.startsWith('blob:'))) {
+      const res = await uploadImageToCloudinary(bannerImage, { folder: 'sayan_digital_hub/sections' });
+      bannerImage = res.url;
     }
     const finalSecData = { ...secData, bannerImage };
     const newId = 'sec-' + Date.now();
@@ -850,8 +852,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateSection = async (id: string, secData: Partial<WebsiteSection>) => {
     let bannerImage = secData.bannerImage;
-    if (bannerImage && bannerImage.startsWith('data:image')) {
-      bannerImage = await compressImage(bannerImage);
+    if (bannerImage && (bannerImage.startsWith('data:image') || bannerImage.startsWith('blob:'))) {
+      const res = await uploadImageToCloudinary(bannerImage, { folder: 'sayan_digital_hub/sections' });
+      bannerImage = res.url;
     }
     const finalSecData = bannerImage !== undefined ? { ...secData, bannerImage } : secData;
     setWebsiteSections(prev => {
@@ -1445,8 +1448,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addPost = async (postData: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => {
     let featuredImage = postData.featuredImage;
-    if (featuredImage && featuredImage.startsWith('data:image')) {
-      featuredImage = await compressImage(featuredImage);
+    if (featuredImage && (featuredImage.startsWith('data:image') || featuredImage.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(featuredImage, { folder: 'sayan_digital_hub/posts' });
+      featuredImage = uploadRes.url;
     }
     const finalPostData = { ...postData, featuredImage };
     const newId = 'post-' + Date.now();
@@ -1475,8 +1479,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updatePost = async (id: string, postData: Partial<Post>) => {
     let featuredImage = postData.featuredImage;
-    if (featuredImage && featuredImage.startsWith('data:image')) {
-      featuredImage = await compressImage(featuredImage);
+    if (featuredImage && (featuredImage.startsWith('data:image') || featuredImage.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(featuredImage, { folder: 'sayan_digital_hub/posts' });
+      featuredImage = uploadRes.url;
     }
     const finalPostData = featuredImage !== undefined ? { ...postData, featuredImage } : postData;
     const updatedData = { ...finalPostData, updatedAt: new Date().toISOString().split('T')[0] };
@@ -1505,8 +1510,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addStudyMaterial = async (matData: Omit<StudyMaterial, 'id' | 'createdAt'>) => {
     let imageUrl = matData.imageUrl;
-    if (imageUrl && imageUrl.startsWith('data:image')) {
-      imageUrl = await compressImage(imageUrl);
+    if (imageUrl && (imageUrl.startsWith('data:image') || imageUrl.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(imageUrl, { folder: 'sayan_digital_hub/materials' });
+      imageUrl = uploadRes.url;
     }
     const finalMatData = { ...matData, imageUrl };
     const newId = 'mat-' + Date.now();
@@ -1543,8 +1549,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addDigitalService = async (srvData: Omit<DigitalService, 'id'>) => {
     let imageUrl = srvData.imageUrl;
-    if (imageUrl && imageUrl.startsWith('data:image')) {
-      imageUrl = await compressImage(imageUrl);
+    if (imageUrl && (imageUrl.startsWith('data:image') || imageUrl.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(imageUrl, { folder: 'sayan_digital_hub/services' });
+      imageUrl = uploadRes.url;
     }
     const finalSrvData = { ...srvData, imageUrl };
     const newId = 'srv-' + Date.now();
@@ -1568,8 +1575,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateDigitalService = async (id: string, srvData: Partial<DigitalService>) => {
     let imageUrl = srvData.imageUrl;
-    if (imageUrl && imageUrl.startsWith('data:image')) {
-      imageUrl = await compressImage(imageUrl);
+    if (imageUrl && (imageUrl.startsWith('data:image') || imageUrl.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(imageUrl, { folder: 'sayan_digital_hub/services' });
+      imageUrl = uploadRes.url;
     }
     const finalSrvData = imageUrl !== undefined ? { ...srvData, imageUrl } : srvData;
     logAction('UPDATE_DIGITAL_SERVICE', `Updating digital service ID: ${id}`);
@@ -1936,16 +1944,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLogo = async (logoUrl: string) => {
-    let compressedLogo = logoUrl;
-    if (compressedLogo && compressedLogo.startsWith('data:image')) {
-      compressedLogo = await compressImage(compressedLogo, 600, 600, 0.8);
+    let finalLogo = logoUrl;
+    if (finalLogo && (finalLogo.startsWith('data:image') || finalLogo.startsWith('blob:'))) {
+      const uploadRes = await uploadImageToCloudinary(finalLogo, { folder: 'sayan_digital_hub/branding' });
+      finalLogo = uploadRes.url;
     }
-    const updatedSettings = { ...settings, logoUrl: compressedLogo };
+    const updatedSettings = { ...settings, logoUrl: finalLogo };
     setSettings(updatedSettings);
     safeSetItem('sdh_settings', JSON.stringify(updatedSettings));
     logAction('UPDATE_LOGO', 'Updated website logo');
     try {
-      await setDoc(doc(db, 'settings', 'logo'), { logoUrl: compressedLogo }, { merge: true });
+      await setDoc(doc(db, 'settings', 'logo'), { logoUrl: finalLogo }, { merge: true });
       console.log('Firebase backend: Saved logo successfully');
     } catch (e) {
       console.error('Firebase backend update logo error:', e);
