@@ -55,9 +55,16 @@ function MainApp() {
     if (matchedSection) {
       return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-          {matchedSection.bannerImage && (
-            <div className="w-full h-64 rounded-3xl overflow-hidden shadow-xl">
-              <img src={matchedSection.bannerImage} alt={matchedSection.title} className="w-full h-full object-cover" />
+          {matchedSection.bannerImage && typeof matchedSection.bannerImage === 'string' && (
+            <div className="w-full h-64 rounded-3xl overflow-hidden shadow-xl bg-slate-200 dark:bg-slate-800">
+              <img 
+                src={matchedSection.bannerImage} 
+                alt={matchedSection.title} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             </div>
           )}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-md border border-slate-200 dark:border-slate-800 space-y-4">

@@ -33,6 +33,24 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
+const safeSetItem = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    if (e instanceof DOMException && (
+      e.code === 22 || 
+      e.code === 1014 || 
+      e.name === 'QuotaExceededError' || 
+      e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+    ) {
+      console.warn(`LocalStorage quota exceeded for key: ${key}. Data not persisted locally.`);
+      // Optional: Clear some space if needed, but for now just warn to prevent crash
+    } else {
+      console.error(`Error saving to LocalStorage for key: ${key}`, e);
+    }
+  }
+};
+
 interface AppContextType {
   language: 'en' | 'bn';
   setLanguage: (lang: 'en' | 'bn') => void;
@@ -653,8 +671,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const establishActiveSession = async (userId: string) => {
     const newSessionId = 'sess-' + Date.now() + '-' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('sdh_active_session_id', newSessionId);
     try {
+      safeSetItem('sdh_active_session_id', newSessionId);
       await setDoc(doc(db, 'activeSessions', userId), {
         sessionId: newSessionId,
         updatedAt: new Date().toISOString()
@@ -700,10 +718,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('sdh_dark_mode', 'true');
+      safeSetItem('sdh_dark_mode', 'true');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('sdh_dark_mode', 'false');
+      safeSetItem('sdh_dark_mode', 'false');
     }
   }, [isDarkMode]);
 
@@ -849,21 +867,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    localStorage.setItem('sdh_language', language);
+    safeSetItem('sdh_language', language);
   }, [language]);
 
 
-  useEffect(() => { localStorage.setItem('sdh_posts', JSON.stringify(posts)); }, [posts]);
-  useEffect(() => { localStorage.setItem('sdh_study_materials', JSON.stringify(studyMaterials)); }, [studyMaterials]);
-  useEffect(() => { localStorage.setItem('sdh_digital_services', JSON.stringify(digitalServices)); }, [digitalServices]);
-  useEffect(() => { localStorage.setItem('sdh_appointments', JSON.stringify(appointments)); }, [appointments]);
-  useEffect(() => { localStorage.setItem('sdh_categories', JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem('sdh_settings', JSON.stringify(settings)); }, [settings]);
-  useEffect(() => { localStorage.setItem('sdh_announcements', JSON.stringify(announcements)); }, [announcements]);
-  useEffect(() => { localStorage.setItem('sdh_users', JSON.stringify(users)); }, [users]);
-  useEffect(() => { localStorage.setItem('sdh_audit_logs', JSON.stringify(auditLogs)); }, [auditLogs]);
-  useEffect(() => { localStorage.setItem('sdh_templates', JSON.stringify(templates)); }, [templates]);
-  useEffect(() => { localStorage.setItem('sdh_website_sections', JSON.stringify(websiteSections)); }, [websiteSections]);
+  useEffect(() => { safeSetItem('sdh_posts', JSON.stringify(posts)); }, [posts]);
+  useEffect(() => { safeSetItem('sdh_study_materials', JSON.stringify(studyMaterials)); }, [studyMaterials]);
+  useEffect(() => { safeSetItem('sdh_digital_services', JSON.stringify(digitalServices)); }, [digitalServices]);
+  useEffect(() => { safeSetItem('sdh_appointments', JSON.stringify(appointments)); }, [appointments]);
+  useEffect(() => { safeSetItem('sdh_categories', JSON.stringify(categories)); }, [categories]);
+  useEffect(() => { safeSetItem('sdh_settings', JSON.stringify(settings)); }, [settings]);
+  useEffect(() => { safeSetItem('sdh_announcements', JSON.stringify(announcements)); }, [announcements]);
+  useEffect(() => { safeSetItem('sdh_users', JSON.stringify(users)); }, [users]);
+  useEffect(() => { safeSetItem('sdh_audit_logs', JSON.stringify(auditLogs)); }, [auditLogs]);
+  useEffect(() => { safeSetItem('sdh_templates', JSON.stringify(templates)); }, [templates]);
+  useEffect(() => { safeSetItem('sdh_website_sections', JSON.stringify(websiteSections)); }, [websiteSections]);
 
   const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(() => {
     const saved = localStorage.getItem('sdh_availability_rules');
@@ -871,9 +889,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sdh_availability_rules', JSON.stringify(availabilityRules));
-    } catch (e) {}
+    safeSetItem('sdh_availability_rules', JSON.stringify(availabilityRules));
   }, [availabilityRules]);
 
   const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>(() => {
@@ -894,9 +910,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sdh_whatsapp_config', JSON.stringify(whatsappConfig));
-    } catch (e) {}
+    safeSetItem('sdh_whatsapp_config', JSON.stringify(whatsappConfig));
   }, [whatsappConfig]);
 
   const addSection = async (secData: Omit<WebsiteSection, 'id'>) => {
@@ -905,7 +919,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWebsiteSections(prev => {
       const updated = [...prev, newSec];
       try {
-        localStorage.setItem('sdh_website_sections', JSON.stringify(updated));
+      safeSetItem('sdh_website_sections', JSON.stringify(updated));
       } catch (err) {}
       return updated;
     });
@@ -921,7 +935,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWebsiteSections(prev => {
       const updated = prev.map(s => s.id === id ? { ...s, ...secData } : s);
       try {
-        localStorage.setItem('sdh_website_sections', JSON.stringify(updated));
+        safeSetItem('sdh_website_sections', JSON.stringify(updated));
       } catch (err) {}
       return updated;
     });
@@ -937,7 +951,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setWebsiteSections(prev => {
       const updated = prev.filter(s => s.id !== id);
       try {
-        localStorage.setItem('sdh_website_sections', JSON.stringify(updated));
+        safeSetItem('sdh_website_sections', JSON.stringify(updated));
       } catch (err) {}
       return updated;
     });
@@ -1939,7 +1953,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mergedSettings.location = newSettings.address;
     }
     setSettings(mergedSettings);
-    localStorage.setItem('sdh_settings', JSON.stringify(mergedSettings));
+    safeSetItem('sdh_settings', JSON.stringify(mergedSettings));
     logAction('UPDATE_SETTINGS', 'Updated website settings');
     try {
       // Exclude logoUrl from general settings to avoid document size limit and remove if present
@@ -1958,7 +1972,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateLogo = async (logoUrl: string) => {
     const updatedSettings = { ...settings, logoUrl };
     setSettings(updatedSettings);
-    localStorage.setItem('sdh_settings', JSON.stringify(updatedSettings));
+    safeSetItem('sdh_settings', JSON.stringify(updatedSettings));
     logAction('UPDATE_LOGO', 'Updated website logo');
     try {
       await setDoc(doc(db, 'settings', 'logo'), { logoUrl }, { merge: true });
@@ -2035,9 +2049,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setWhatsAppConfig(updated);
-    try {
-      localStorage.setItem('sdh_whatsapp_config', JSON.stringify(updated));
-    } catch (e) {}
+    safeSetItem('sdh_whatsapp_config', JSON.stringify(updated));
 
     logAction('UPDATE_WHATSAPP_CONFIG', `Updated WhatsApp Customer Support configuration (${publish ? 'Published' : 'Draft saved'})`);
 
