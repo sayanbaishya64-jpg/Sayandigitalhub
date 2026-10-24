@@ -4,6 +4,7 @@ import {
   WebsiteSettings, Announcement, User, AuditLog, ContentType, PostStatus, ContentTemplateDef, WebsiteSection,
   WhatsAppConfig, WhatsAppSectionPrefill, AvailabilityRule, AvailabilityRuleType, DEFAULT_HOURLY_TIME_SLOTS
 } from '../types';
+import { compressImage } from '../utils/imageCompressor';
 import { 
   db, 
   auth, 
@@ -825,12 +826,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [whatsappConfig]);
 
   const addSection = async (secData: Omit<WebsiteSection, 'id'>) => {
+    let bannerImage = secData.bannerImage;
+    if (bannerImage && bannerImage.startsWith('data:image')) {
+      bannerImage = await compressImage(bannerImage);
+    }
+    const finalSecData = { ...secData, bannerImage };
     const newId = 'sec-' + Date.now();
-    const newSec: WebsiteSection = { ...secData, id: newId };
+    const newSec: WebsiteSection = { ...finalSecData, id: newId };
     setWebsiteSections(prev => {
       const updated = [...prev, newSec];
       try {
-      safeSetItem('sdh_website_sections', JSON.stringify(updated));
+        safeSetItem('sdh_website_sections', JSON.stringify(updated));
       } catch (err) {}
       return updated;
     });
@@ -843,8 +849,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSection = async (id: string, secData: Partial<WebsiteSection>) => {
+    let bannerImage = secData.bannerImage;
+    if (bannerImage && bannerImage.startsWith('data:image')) {
+      bannerImage = await compressImage(bannerImage);
+    }
+    const finalSecData = bannerImage !== undefined ? { ...secData, bannerImage } : secData;
     setWebsiteSections(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, ...secData } : s);
+      const updated = prev.map(s => s.id === id ? { ...s, ...finalSecData } : s);
       try {
         safeSetItem('sdh_website_sections', JSON.stringify(updated));
       } catch (err) {}
@@ -852,7 +863,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     logAction('UPDATE_SECTION', `Updated website section ID: ${id}`);
     try {
-      await setDoc(doc(db, 'websiteSections', id), cleanPayload(secData), { merge: true });
+      await setDoc(doc(db, 'websiteSections', id), cleanPayload(finalSecData), { merge: true });
     } catch (e) {
       console.warn('Firestore update section:', e);
     }
@@ -990,15 +1001,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: StudyMaterial[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as StudyMaterial);
+          const data = docSnap.data() as StudyMaterial;
+          loaded.push({ ...data, id: data.id || docSnap.id });
         });
-        setStudyMaterials(loaded);
-      } else if (auth.currentUser) {
-        initialStudyMaterials.forEach((m) => {
-          setDoc(doc(db, 'studyMaterials', m.id), cleanPayload(m)).catch(err => {
-            console.warn('Seeding study material error:', err);
-          });
-        });
+        const loadedIds = new Set(loaded.map(m => m.id));
+        const missingInitial = initialStudyMaterials.filter(m => !loadedIds.has(m.id));
+        setStudyMaterials([...loaded, ...missingInitial]);
+      } else {
         setStudyMaterials(initialStudyMaterials);
       }
     }, (error) => {
@@ -1010,15 +1019,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: DigitalService[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as DigitalService);
+          const data = docSnap.data() as DigitalService;
+          loaded.push({ ...data, id: data.id || docSnap.id });
         });
-        setDigitalServices(loaded);
-      } else if (auth.currentUser) {
-        initialDigitalServices.forEach((s) => {
-          setDoc(doc(db, 'digitalServices', s.id), cleanPayload(s)).catch(err => {
-            console.warn('Seeding service error:', err);
-          });
-        });
+        const loadedIds = new Set(loaded.map(s => s.id));
+        const missingInitial = initialDigitalServices.filter(s => !loadedIds.has(s.id));
+        setDigitalServices([...loaded, ...missingInitial]);
+      } else {
         setDigitalServices(initialDigitalServices);
       }
     }, (error) => {
@@ -1030,16 +1037,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: Appointment[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as Appointment);
+          const data = docSnap.data() as Appointment;
+          loaded.push({ ...data, id: data.id || docSnap.id });
         });
         loaded.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setAppointments(loaded);
-      } else if (auth.currentUser) {
-        initialAppointments.forEach((a) => {
-          setDoc(doc(db, 'appointments', a.id), cleanPayload(a)).catch(err => {
-            console.warn('Seeding appointment error:', err);
-          });
-        });
+      } else {
         setAppointments(initialAppointments);
       }
     }, (error) => {
@@ -1065,15 +1068,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: Category[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as Category);
+          const data = docSnap.data() as Category;
+          loaded.push({ ...data, id: data.id || docSnap.id });
         });
-        setCategories(loaded);
+        const loadedIds = new Set(loaded.map(c => c.id));
+        const missingInitial = initialCategories.filter(c => !loadedIds.has(c.id));
+        setCategories([...loaded, ...missingInitial]);
       } else {
-        initialCategories.forEach((c) => {
-          setDoc(doc(db, 'categories', c.id), cleanPayload(c)).catch(err => {
-            console.warn('Seeding category error:', err);
-          });
-        });
+        setCategories(initialCategories);
       }
     }, (error) => {
       console.warn('Firestore categories snapshot warning:', error);
@@ -1084,15 +1086,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!snapshot.empty) {
         const loaded: Announcement[] = [];
         snapshot.forEach((docSnap) => {
-          loaded.push(docSnap.data() as Announcement);
+          const data = docSnap.data() as Announcement;
+          loaded.push({ ...data, id: data.id || docSnap.id });
         });
-        setAnnouncements(loaded);
+        const loadedIds = new Set(loaded.map(a => a.id));
+        const missingInitial = initialAnnouncements.filter(a => !loadedIds.has(a.id));
+        setAnnouncements([...loaded, ...missingInitial]);
       } else {
-        initialAnnouncements.forEach((an) => {
-          setDoc(doc(db, 'announcements', an.id), cleanPayload(an)).catch(err => {
-            console.warn('Seeding announcement error:', err);
-          });
-        });
+        setAnnouncements(initialAnnouncements);
       }
     }, (error) => {
       console.warn('Firestore announcements snapshot warning:', error);
@@ -1443,9 +1444,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPost = async (postData: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => {
+    let featuredImage = postData.featuredImage;
+    if (featuredImage && featuredImage.startsWith('data:image')) {
+      featuredImage = await compressImage(featuredImage);
+    }
+    const finalPostData = { ...postData, featuredImage };
     const newId = 'post-' + Date.now();
     const newPost: Post = {
-      ...postData,
+      ...finalPostData,
       id: newId,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
@@ -1453,11 +1459,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? new Date().toISOString().split('T')[0] 
         : (postData.publishedAt || undefined)
     };
-    setPosts(prev => [newPost, ...prev]);
-    logAction('CREATE_POST', `Created post: ${newPost.title} (${newPost.contentType})`);
+    logAction('CREATE_POST', `Creating post: ${newPost.title} (${newPost.contentType})`);
     try {
       await setDoc(doc(db, 'posts', newId), cleanPayload(newPost));
       console.log('Firebase backend: Saved post successfully:', newId);
+      setPosts(prev => {
+        const exists = prev.some(p => p.id === newId);
+        return exists ? prev : [newPost, ...prev];
+      });
     } catch (e) {
       console.error('Firebase backend save post error:', e);
       handleFirestoreError(e, OperationType.CREATE, `posts/${newId}`);
@@ -1465,12 +1474,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePost = async (id: string, postData: Partial<Post>) => {
-    const updatedData = { ...postData, updatedAt: new Date().toISOString().split('T')[0] };
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updatedData } : p));
-    logAction('UPDATE_POST', `Updated post ID: ${id}`);
+    let featuredImage = postData.featuredImage;
+    if (featuredImage && featuredImage.startsWith('data:image')) {
+      featuredImage = await compressImage(featuredImage);
+    }
+    const finalPostData = featuredImage !== undefined ? { ...postData, featuredImage } : postData;
+    const updatedData = { ...finalPostData, updatedAt: new Date().toISOString().split('T')[0] };
+    logAction('UPDATE_POST', `Updating post ID: ${id}`);
     try {
       await setDoc(doc(db, 'posts', id), cleanPayload(updatedData), { merge: true });
       console.log('Firebase backend: Updated post successfully:', id);
+      setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updatedData } : p));
     } catch (e) {
       console.error('Firebase backend update post error:', e);
       handleFirestoreError(e, OperationType.UPDATE, `posts/${id}`);
@@ -1478,11 +1492,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deletePost = async (id: string) => {
-    setPosts(prev => prev.filter(p => p.id !== id));
-    logAction('DELETE_POST', `Deleted post ID: ${id}`);
+    logAction('DELETE_POST', `Deleting post ID: ${id}`);
     try {
       await deleteDoc(doc(db, 'posts', id));
       console.log('Firebase backend: Deleted post successfully:', id);
+      setPosts(prev => prev.filter(p => p.id !== id));
     } catch (e) {
       console.error('Firebase backend delete post error:', e);
       handleFirestoreError(e, OperationType.DELETE, `posts/${id}`);
@@ -1490,17 +1504,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStudyMaterial = async (matData: Omit<StudyMaterial, 'id' | 'createdAt'>) => {
+    let imageUrl = matData.imageUrl;
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      imageUrl = await compressImage(imageUrl);
+    }
+    const finalMatData = { ...matData, imageUrl };
     const newId = 'mat-' + Date.now();
     const newMat: StudyMaterial = {
-      ...matData,
+      ...finalMatData,
       id: newId,
       createdAt: new Date().toISOString().split('T')[0]
     };
-    setStudyMaterials(prev => [newMat, ...prev]);
-    logAction('CREATE_STUDY_MATERIAL', `Added study material: ${newMat.topicName}`);
+    logAction('CREATE_STUDY_MATERIAL', `Adding study material: ${newMat.topicName}`);
     try {
       await setDoc(doc(db, 'studyMaterials', newId), cleanPayload(newMat));
       console.log('Firebase backend: Saved study material successfully:', newId);
+      setStudyMaterials(prev => {
+        const exists = prev.some(m => m.id === newId);
+        return exists ? prev : [newMat, ...prev];
+      });
     } catch (e) {
       console.error('Firebase backend add study material error:', e);
       handleFirestoreError(e, OperationType.CREATE, `studyMaterials/${newId}`);
@@ -1508,11 +1530,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteStudyMaterial = async (id: string) => {
-    setStudyMaterials(prev => prev.filter(m => m.id !== id));
-    logAction('DELETE_STUDY_MATERIAL', `Deleted study material ID: ${id}`);
+    logAction('DELETE_STUDY_MATERIAL', `Deleting study material ID: ${id}`);
     try {
       await deleteDoc(doc(db, 'studyMaterials', id));
       console.log('Firebase backend: Deleted study material successfully:', id);
+      setStudyMaterials(prev => prev.filter(m => m.id !== id));
     } catch (e) {
       console.error('Firebase backend delete study material error:', e);
       handleFirestoreError(e, OperationType.DELETE, `studyMaterials/${id}`);
@@ -1520,16 +1542,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addDigitalService = async (srvData: Omit<DigitalService, 'id'>) => {
+    let imageUrl = srvData.imageUrl;
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      imageUrl = await compressImage(imageUrl);
+    }
+    const finalSrvData = { ...srvData, imageUrl };
     const newId = 'srv-' + Date.now();
     const newSrv: DigitalService = {
-      ...srvData,
+      ...finalSrvData,
       id: newId
     };
-    setDigitalServices(prev => [...prev, newSrv]);
-    logAction('CREATE_DIGITAL_SERVICE', `Added digital service: ${newSrv.name}`);
+    logAction('CREATE_DIGITAL_SERVICE', `Adding digital service: ${newSrv.name}`);
     try {
       await setDoc(doc(db, 'digitalServices', newId), cleanPayload(newSrv));
       console.log('Firebase backend: Saved digital service successfully:', newId);
+      setDigitalServices(prev => {
+        const exists = prev.some(s => s.id === newId);
+        return exists ? prev : [...prev, newSrv];
+      });
     } catch (e) {
       console.error('Firebase backend add digital service error:', e);
       handleFirestoreError(e, OperationType.CREATE, `digitalServices/${newId}`);
@@ -1537,11 +1567,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateDigitalService = async (id: string, srvData: Partial<DigitalService>) => {
-    setDigitalServices(prev => prev.map(s => s.id === id ? { ...s, ...srvData } : s));
-    logAction('UPDATE_DIGITAL_SERVICE', `Updated digital service ID: ${id}`);
+    let imageUrl = srvData.imageUrl;
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      imageUrl = await compressImage(imageUrl);
+    }
+    const finalSrvData = imageUrl !== undefined ? { ...srvData, imageUrl } : srvData;
+    logAction('UPDATE_DIGITAL_SERVICE', `Updating digital service ID: ${id}`);
     try {
-      await setDoc(doc(db, 'digitalServices', id), cleanPayload(srvData), { merge: true });
+      await setDoc(doc(db, 'digitalServices', id), cleanPayload(finalSrvData), { merge: true });
       console.log('Firebase backend: Updated digital service successfully:', id);
+      setDigitalServices(prev => prev.map(s => s.id === id ? { ...s, ...finalSrvData } : s));
     } catch (e) {
       console.error('Firebase backend update digital service error:', e);
       handleFirestoreError(e, OperationType.UPDATE, `digitalServices/${id}`);
@@ -1549,11 +1584,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteDigitalService = async (id: string) => {
-    setDigitalServices(prev => prev.filter(s => s.id !== id));
-    logAction('DELETE_DIGITAL_SERVICE', `Deleted digital service ID: ${id}`);
+    logAction('DELETE_DIGITAL_SERVICE', `Deleting digital service ID: ${id}`);
     try {
       await deleteDoc(doc(db, 'digitalServices', id));
       console.log('Firebase backend: Deleted digital service successfully:', id);
+      setDigitalServices(prev => prev.filter(s => s.id !== id));
     } catch (e) {
       console.error('Firebase backend delete digital service error:', e);
       handleFirestoreError(e, OperationType.DELETE, `digitalServices/${id}`);
@@ -1901,12 +1936,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLogo = async (logoUrl: string) => {
-    const updatedSettings = { ...settings, logoUrl };
+    let compressedLogo = logoUrl;
+    if (compressedLogo && compressedLogo.startsWith('data:image')) {
+      compressedLogo = await compressImage(compressedLogo, 600, 600, 0.8);
+    }
+    const updatedSettings = { ...settings, logoUrl: compressedLogo };
     setSettings(updatedSettings);
     safeSetItem('sdh_settings', JSON.stringify(updatedSettings));
     logAction('UPDATE_LOGO', 'Updated website logo');
     try {
-      await setDoc(doc(db, 'settings', 'logo'), { logoUrl }, { merge: true });
+      await setDoc(doc(db, 'settings', 'logo'), { logoUrl: compressedLogo }, { merge: true });
       console.log('Firebase backend: Saved logo successfully');
     } catch (e) {
       console.error('Firebase backend update logo error:', e);
@@ -1915,27 +1954,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addAnnouncement = async (annData: Omit<Announcement, 'id'>) => {
+    const newId = 'ann-' + Date.now();
     const newAnn: Announcement = {
       ...annData,
-      id: 'ann-' + Date.now()
+      id: newId
     };
-    setAnnouncements(prev => [newAnn, ...prev]);
-    logAction('CREATE_ANNOUNCEMENT', `Created announcement: ${newAnn.title}`);
+    logAction('CREATE_ANNOUNCEMENT', `Creating announcement: ${newAnn.title}`);
     try {
-      await setDoc(doc(db, 'announcements', newAnn.id), cleanPayload(newAnn));
-      console.log('Firebase backend: Saved announcement successfully:', newAnn.id);
+      await setDoc(doc(db, 'announcements', newId), cleanPayload(newAnn));
+      console.log('Firebase backend: Saved announcement successfully:', newId);
+      setAnnouncements(prev => {
+        const exists = prev.some(a => a.id === newId);
+        return exists ? prev : [newAnn, ...prev];
+      });
     } catch (e) {
       console.error('Firebase backend add announcement error:', e);
-      handleFirestoreError(e, OperationType.CREATE, `announcements/${newAnn.id}`);
+      handleFirestoreError(e, OperationType.CREATE, `announcements/${newId}`);
     }
   };
 
   const deleteAnnouncement = async (id: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
-    logAction('DELETE_ANNOUNCEMENT', `Deleted announcement ID: ${id}`);
+    logAction('DELETE_ANNOUNCEMENT', `Deleting announcement ID: ${id}`);
     try {
       await deleteDoc(doc(db, 'announcements', id));
       console.log('Firebase backend: Deleted announcement successfully:', id);
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
     } catch (e) {
       console.error('Firebase backend delete announcement error:', e);
       handleFirestoreError(e, OperationType.DELETE, `announcements/${id}`);

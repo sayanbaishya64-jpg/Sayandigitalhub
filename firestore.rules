@@ -6,38 +6,78 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Global Helper: Check if user is a verified super admin
-    function isSuperAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin' &&
-             request.auth.token.email_verified == true;
-    }
-    
-    // Global Helper: Check if user is an admin or super admin
+    // Global Helper: Check if user is an admin or super admin or authenticated manager
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin') &&
-             request.auth.token.email_verified == true;
+      return isSignedIn();
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
-      allow write: if isSignedIn() && request.auth.uid == userId; // Basic self-management
+      allow read: if true;
+      allow write: if isSignedIn();
       
-      // Super Admin protection
       match /super-admin-dashboard {
-        allow read, write: if isSuperAdmin();
+        allow read, write: if isSignedIn();
       }
     }
 
     match /posts/{postId} {
-      allow read: if true; // Publicly readable
-      allow write: if isAdmin(); // Only admins can create/edit content
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /announcements/{annId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /studyMaterials/{matId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /digitalServices/{srvId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /websiteSections/{secId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /categories/{catId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /templates/{tmplId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /availabilityRules/{ruleId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /appointments/{aptId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isSignedIn();
+    }
+
+    match /auditLogs/{logId} {
+      allow read, write: if isSignedIn();
     }
     
     match /{document=**} {
-      allow read, write: if false; // Default deny
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

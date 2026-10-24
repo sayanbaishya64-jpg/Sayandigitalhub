@@ -9,6 +9,7 @@ import {
 import { ContentType, PostStatus, Post, StudyMaterial, DigitalService, ContentTemplateDef, ContentTemplateField, WebsiteSection, WhatsAppConfig, WhatsAppSectionPrefill } from '../../types';
 import { buildWhatsAppUrl, validateWhatsAppNumber, formatWhatsAppDisplay, isSupportOnlineNow } from '../../lib/whatsapp';
 import { AvailabilityManagement } from '../../components/AvailabilityManagement';
+import { compressImage } from '../../utils/imageCompressor';
 
 interface AdminDashboardProps {
   setActivePage: (page: string) => void;
@@ -24,7 +25,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
     settings, updateSettings, updateLogo, auditLogs, language,
     templates, addTemplate, deleteTemplate,
     websiteSections, addSection, updateSection, deleteSection,
-    whatsappConfig, updateWhatsAppConfig
+    whatsappConfig, updateWhatsAppConfig, addAnnouncement
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'templates' | 'sections' | 'materials' | 'services' | 'appointments' | 'users' | 'whatsapp' | 'settings' | 'audit' | 'rls'>('overview');
@@ -239,71 +240,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || isPublishing) return;
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      alert('Please enter a Title (English) for the post before publishing.');
+      return;
+    }
+    if (isPublishing) return;
     setIsPublishing(true);
 
     try {
-      const operations: Promise<void>[] = [];
-
       if (contentType === 'material') {
-        operations.push(Promise.resolve(addStudyMaterial({
-          topicName: title,
-          bengaliTopicName: bengaliTitle || undefined,
-          subject: matSubject || organization || 'General Studies',
-          shortDescription: summary,
-          detailedDescription: content,
-          classLevel: qualification || 'All Levels',
+        await addStudyMaterial({
+          topicName: cleanTitle,
+          bengaliTopicName: bengaliTitle.trim() || undefined,
+          subject: matSubject.trim() || organization.trim() || 'General Studies',
+          shortDescription: summary.trim() || cleanTitle,
+          detailedDescription: content.trim(),
+          classLevel: qualification.trim() || 'All Levels',
           author: currentUser?.name || 'SDH Admin',
           language: 'Both',
-          fileUrl: matDriveUrl || officialUrl || 'https://drive.google.com',
-          fileName: title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+          fileUrl: matDriveUrl.trim() || officialUrl.trim() || 'https://drive.google.com',
+          fileName: cleanTitle.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
           fileType: 'drive',
           accessPermission: matAccess,
           imageUrl: featuredImage.trim() || undefined
-        })));
+        });
       } else if (contentType === 'service') {
-        operations.push(Promise.resolve(addDigitalService({
-          name: title,
-          bengaliName: bengaliTitle || undefined,
-          category: srvCategory || organization || 'Digital Services',
-          shortDescription: summary,
-          detailedDescription: content,
+        await addDigitalService({
+          name: cleanTitle,
+          bengaliName: bengaliTitle.trim() || undefined,
+          category: srvCategory.trim() || organization.trim() || 'Digital Services',
+          shortDescription: summary.trim() || cleanTitle,
+          detailedDescription: content.trim(),
           icon: 'MonitorSmartphone',
           imageUrl: featuredImage.trim() || undefined,
-          eligibility: qualification || 'All Applicants',
+          eligibility: qualification.trim() || 'All Applicants',
           requiredDocuments: ['Aadhaar Card', 'Academic Mark Sheets', 'Photo Specimen'],
-          process: content || 'Submit details online or visit our hub.',
-          charges: srvCharges || amount || '₹100',
-          processingTime: srvProcessingTime || lastDate || '1 - 2 Days',
+          process: content.trim() || 'Submit details online or visit our hub.',
+          charges: srvCharges.trim() || amount.trim() || '₹100',
+          processingTime: srvProcessingTime.trim() || lastDate.trim() || '1 - 2 Days',
           availability: true,
           bookingRequired: true,
-          officialWebsite: officialUrl
-        })));
+          officialWebsite: officialUrl.trim() || undefined
+        });
+      } else if (contentType === 'announcement') {
+        await addAnnouncement({
+          title: cleanTitle,
+          bengaliTitle: bengaliTitle.trim() || undefined,
+          text: content.trim() || summary.trim() || cleanTitle,
+          bengaliText: bengaliSummary.trim() || bengaliTitle.trim() || cleanTitle,
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          active: true
+        });
       }
 
-      operations.push(Promise.resolve(addPost({
-        title,
-        bengaliTitle,
-        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      await addPost({
+        title: cleanTitle,
+        bengaliTitle: bengaliTitle.trim() || undefined,
+        slug: cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
         contentType,
-        summary,
-        bengaliSummary,
-        content,
+        summary: summary.trim(),
+        bengaliSummary: bengaliSummary.trim() || undefined,
+        content: content.trim(),
         categoryId: contentType === 'material' ? 'cat-5' : contentType === 'service' ? 'cat-6' : 'cat-1',
         featuredImage: featuredImage.trim() || undefined,
-        authorId: currentUser.id,
+        authorId: currentUser?.id || 'admin',
         status: 'published',
-        organization: organization || matSubject || srvCategory,
-        totalVacancies,
-        qualification,
-        lastDate: lastDate || srvProcessingTime,
-        officialUrl: officialUrl || matDriveUrl,
-        applyUrl,
-        amount: amount || srvCharges,
-        examDate
-      })));
-
-      await Promise.all(operations);
+        organization: organization.trim() || matSubject.trim() || srvCategory.trim() || undefined,
+        totalVacancies: totalVacancies.trim() || undefined,
+        qualification: qualification.trim() || undefined,
+        lastDate: lastDate.trim() || srvProcessingTime.trim() || undefined,
+        officialUrl: officialUrl.trim() || matDriveUrl.trim() || undefined,
+        applyUrl: applyUrl.trim() || undefined,
+        amount: amount.trim() || srvCharges.trim() || undefined,
+        examDate: examDate.trim() || undefined
+      });
 
       setNewPostModal(false);
       setTitle('');
@@ -324,36 +336,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
       setSrvCategory('');
       setSrvCharges('');
       setFeaturedImage('');
-    } catch (err) {
+      alert('Post published successfully and saved permanently to Firebase!');
+    } catch (err: any) {
       console.error('Failed to publish post:', err);
-      alert('Failed to publish post. Please check your connection and try again.');
+      alert(`Failed to publish content: ${err?.message || 'Database write operation failed. Form data has been preserved.'}`);
     } finally {
       setIsPublishing(false);
     }
   };
 
-  const handleCreateTemplate = (e: React.FormEvent) => {
+  const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tmplName.trim()) return;
 
-    addTemplate({
-      name: tmplName.trim(),
-      contentType: tmplType,
-      description: tmplDesc.trim() || `Reusable template for ${tmplType}`,
-      fields: tmplFields
-    });
+    try {
+      await addTemplate({
+        name: tmplName.trim(),
+        contentType: tmplType,
+        description: tmplDesc.trim() || `Reusable template for ${tmplType}`,
+        fields: tmplFields
+      });
 
-    setNewTemplateModal(false);
-    setTmplName('');
-    setTmplDesc('');
-    setTmplFields([
-      { name: 'organization', label: 'Organization / Provider', type: 'text', required: true },
-      { name: 'lastDate', label: 'Deadline / Date', type: 'date', required: true },
-      { name: 'featuredImage', label: 'Featured Banner / Poster Image', type: 'image', required: false }
-    ]);
+      setNewTemplateModal(false);
+      setTmplName('');
+      setTmplDesc('');
+      setTmplFields([
+        { name: 'organization', label: 'Organization / Provider', type: 'text', required: true },
+        { name: 'lastDate', label: 'Deadline / Date', type: 'date', required: true },
+        { name: 'featuredImage', label: 'Featured Banner / Poster Image', type: 'image', required: false }
+      ]);
+    } catch (err: any) {
+      console.error('Failed to create template:', err);
+      alert(`Failed to create template: ${err?.message || 'Database write operation failed.'}`);
+    }
   };
 
-  const handleSaveSection = (e: React.FormEvent) => {
+  const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!secName.trim()) {
       setSectionNotice('Section Name is required.');
@@ -369,67 +387,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
       slug = `${slug}-${Date.now().toString().slice(-4)}`;
     }
 
-    if (editingSectionId) {
-      updateSection(editingSectionId, {
-        name: secName.trim(),
-        title: titleToUse,
-        slug,
-        description: secDesc.trim(),
-        icon: secIcon.trim() || 'Briefcase',
-        bannerImage: secBanner.trim() || undefined,
-        layout: secLayout,
-        showOnHomepage: secShowHomepage,
-        showInDesktopNav: secShowDesktopNav,
-        showInMobileNav: secShowMobileNav,
-        showInFooter: secShowFooter,
-        displayOrder: Number(secDisplayOrder) || 1,
-        colorTheme: secColorTheme,
-        status: secStatus || 'published',
-        seoTitle: secSeoTitle.trim() || undefined,
-        seoDescription: secSeoDesc.trim() || undefined
-      });
-      setSectionNotice(`Section "${secName.trim()}" updated successfully!`);
-    } else {
-      addSection({
-        name: secName.trim(),
-        title: titleToUse,
-        slug,
-        description: secDesc.trim(),
-        icon: secIcon.trim() || 'Briefcase',
-        bannerImage: secBanner.trim() || undefined,
-        layout: secLayout,
-        showOnHomepage: secShowHomepage,
-        showInDesktopNav: secShowDesktopNav,
-        showInMobileNav: secShowMobileNav,
-        showInFooter: secShowFooter,
-        displayOrder: Number(secDisplayOrder) || (websiteSections.length + 1),
-        colorTheme: secColorTheme,
-        status: secStatus || 'published',
-        seoTitle: secSeoTitle.trim() || undefined,
-        seoDescription: secSeoDesc.trim() || undefined
-      });
-      setSectionNotice(`Section "${secName.trim()}" published successfully!`);
-    }
+    try {
+      if (editingSectionId) {
+        await updateSection(editingSectionId, {
+          name: secName.trim(),
+          title: titleToUse,
+          slug,
+          description: secDesc.trim(),
+          icon: secIcon.trim() || 'Briefcase',
+          bannerImage: secBanner.trim() || undefined,
+          layout: secLayout,
+          showOnHomepage: secShowHomepage,
+          showInDesktopNav: secShowDesktopNav,
+          showInMobileNav: secShowMobileNav,
+          showInFooter: secShowFooter,
+          displayOrder: Number(secDisplayOrder) || 1,
+          colorTheme: secColorTheme,
+          status: secStatus || 'published',
+          seoTitle: secSeoTitle.trim() || undefined,
+          seoDescription: secSeoDesc.trim() || undefined
+        });
+        setSectionNotice(`Section "${secName.trim()}" updated successfully!`);
+      } else {
+        await addSection({
+          name: secName.trim(),
+          title: titleToUse,
+          slug,
+          description: secDesc.trim(),
+          icon: secIcon.trim() || 'Briefcase',
+          bannerImage: secBanner.trim() || undefined,
+          layout: secLayout,
+          showOnHomepage: secShowHomepage,
+          showInDesktopNav: secShowDesktopNav,
+          showInMobileNav: secShowMobileNav,
+          showInFooter: secShowFooter,
+          displayOrder: Number(secDisplayOrder) || (websiteSections.length + 1),
+          colorTheme: secColorTheme,
+          status: secStatus || 'published',
+          seoTitle: secSeoTitle.trim() || undefined,
+          seoDescription: secSeoDesc.trim() || undefined
+        });
+        setSectionNotice(`Section "${secName.trim()}" published successfully!`);
+      }
 
-    setNewSectionModal(false);
-    setEditingSectionId(null);
-    setSecName('');
-    setSecTitle('');
-    setSecSlug('');
-    setSecDesc('');
-    setSecIcon('Briefcase');
-    setSecBanner('');
-    setSecLayout('card-grid');
-    setSecShowHomepage(true);
-    setSecShowDesktopNav(true);
-    setSecShowMobileNav(true);
-    setSecShowFooter(true);
-    setSecDisplayOrder(1);
-    setSecColorTheme('indigo');
-    setSecStatus('published');
-    setSecSeoTitle('');
-    setSecSeoDesc('');
-    setTimeout(() => setSectionNotice(null), 4000);
+      setNewSectionModal(false);
+      setEditingSectionId(null);
+      setSecName('');
+      setSecTitle('');
+      setSecSlug('');
+      setSecDesc('');
+      setSecIcon('Briefcase');
+      setSecBanner('');
+      setSecLayout('card-grid');
+      setSecShowHomepage(true);
+      setSecShowDesktopNav(true);
+      setSecShowMobileNav(true);
+      setSecShowFooter(true);
+      setSecDisplayOrder(1);
+      setSecColorTheme('indigo');
+      setSecStatus('published');
+      setSecSeoTitle('');
+      setSecSeoDesc('');
+      setTimeout(() => setSectionNotice(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to save section:', err);
+      setSectionNotice(`Error saving section: ${err?.message || 'Database operation failed.'}`);
+    }
   };
 
   const handleEditSectionModal = (sec: WebsiteSection) => {
@@ -491,95 +514,121 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
     setTmplFields(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleCreateDirectMaterial = (e: React.FormEvent) => {
+  const handleCreateDirectMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!directMatTopic.trim() || !directMatSubject.trim() || !directMatFileUrl.trim()) return;
+    if (!directMatTopic.trim() || !directMatSubject.trim() || !directMatFileUrl.trim()) {
+      alert('Please fill in Topic Name, Subject, and Google Drive Link.');
+      return;
+    }
+    if (isPublishing) return;
+    setIsPublishing(true);
 
-    addStudyMaterial({
-      topicName: directMatTopic.trim(),
-      bengaliTopicName: directMatBengaliTopic.trim() || undefined,
-      subject: directMatSubject.trim(),
-      shortDescription: directMatShortDesc.trim() || directMatTopic.trim(),
-      classLevel: directMatClass.trim() || 'General',
-      author: directMatAuthor.trim() || currentUser?.name || 'SDH Panel',
-      language: directMatLang,
-      fileUrl: directMatFileUrl.trim(),
-      fileName: directMatTopic.trim().replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
-      fileType: 'drive',
-      accessPermission: directMatAccess,
-      imageUrl: directMatImage.trim() || undefined
-    });
+    try {
+      await addStudyMaterial({
+        topicName: directMatTopic.trim(),
+        bengaliTopicName: directMatBengaliTopic.trim() || undefined,
+        subject: directMatSubject.trim(),
+        shortDescription: directMatShortDesc.trim() || directMatTopic.trim(),
+        classLevel: directMatClass.trim() || 'General',
+        author: directMatAuthor.trim() || currentUser?.name || 'SDH Panel',
+        language: directMatLang,
+        fileUrl: directMatFileUrl.trim(),
+        fileName: directMatTopic.trim().replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        fileType: 'drive',
+        accessPermission: directMatAccess,
+        imageUrl: directMatImage.trim() || undefined
+      });
 
-    addPost({
-      title: directMatTopic.trim(),
-      bengaliTitle: directMatBengaliTopic.trim() || undefined,
-      slug: directMatTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      contentType: 'material',
-      summary: directMatShortDesc.trim() || directMatTopic.trim(),
-      content: `Access comprehensive study material for ${directMatSubject}: ${directMatTopic}. Google Drive Link: ${directMatFileUrl}`,
-      categoryId: 'cat-5',
-      featuredImage: directMatImage.trim() || undefined,
-      authorId: currentUser.id,
-      status: 'published',
-      organization: directMatSubject.trim(),
-      officialUrl: directMatFileUrl.trim()
-    });
+      await addPost({
+        title: directMatTopic.trim(),
+        bengaliTitle: directMatBengaliTopic.trim() || undefined,
+        slug: directMatTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        contentType: 'material',
+        summary: directMatShortDesc.trim() || directMatTopic.trim(),
+        content: `Access comprehensive study material for ${directMatSubject}: ${directMatTopic}. Google Drive Link: ${directMatFileUrl}`,
+        categoryId: 'cat-5',
+        featuredImage: directMatImage.trim() || undefined,
+        authorId: currentUser?.id || 'admin',
+        status: 'published',
+        organization: directMatSubject.trim(),
+        officialUrl: directMatFileUrl.trim()
+      });
 
-    setNewMaterialModal(false);
-    setDirectMatTopic('');
-    setDirectMatBengaliTopic('');
-    setDirectMatSubject('');
-    setDirectMatShortDesc('');
-    setDirectMatClass('');
-    setDirectMatAuthor('');
-    setDirectMatFileUrl('');
-    setDirectMatImage('');
+      setNewMaterialModal(false);
+      setDirectMatTopic('');
+      setDirectMatBengaliTopic('');
+      setDirectMatSubject('');
+      setDirectMatShortDesc('');
+      setDirectMatClass('');
+      setDirectMatAuthor('');
+      setDirectMatFileUrl('');
+      setDirectMatImage('');
+      alert('Study material published successfully and saved permanently to Firebase!');
+    } catch (err: any) {
+      console.error('Failed to create study material:', err);
+      alert(`Failed to save study material: ${err?.message || 'Database write failed. Form data preserved.'}`);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
-  const handleCreateDirectService = (e: React.FormEvent) => {
+  const handleCreateDirectService = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!directSrvName.trim() || !directSrvCategory.trim()) return;
+    if (!directSrvName.trim() || !directSrvCategory.trim()) {
+      alert('Please fill in Service Name and Category.');
+      return;
+    }
+    if (isPublishing) return;
+    setIsPublishing(true);
 
-    addDigitalService({
-      name: directSrvName.trim(),
-      bengaliName: directSrvBengaliName.trim() || undefined,
-      category: directSrvCategory.trim(),
-      shortDescription: directSrvShortDesc.trim() || directSrvName.trim(),
-      icon: 'MonitorSmartphone',
-      imageUrl: directSrvImage.trim() || undefined,
-      charges: directSrvCharges.trim() || '₹100',
-      processingTime: directSrvProcessingTime.trim() || '1 - 2 Hours',
-      eligibility: directSrvEligibility.trim(),
-      requiredDocuments: directSrvRequiredDocs.split(',').map(d => d.trim()).filter(Boolean),
-      process: directSrvProcess.trim(),
-      availability: true,
-      bookingRequired: directSrvBookingRequired,
-      officialWebsite: directSrvWebsite.trim() || undefined
-    });
+    try {
+      await addDigitalService({
+        name: directSrvName.trim(),
+        bengaliName: directSrvBengaliName.trim() || undefined,
+        category: directSrvCategory.trim(),
+        shortDescription: directSrvShortDesc.trim() || directSrvName.trim(),
+        icon: 'MonitorSmartphone',
+        imageUrl: directSrvImage.trim() || undefined,
+        charges: directSrvCharges.trim() || '₹100',
+        processingTime: directSrvProcessingTime.trim() || '1 - 2 Hours',
+        eligibility: directSrvEligibility.trim(),
+        requiredDocuments: directSrvRequiredDocs.split(',').map(d => d.trim()).filter(Boolean),
+        process: directSrvProcess.trim(),
+        availability: true,
+        bookingRequired: directSrvBookingRequired,
+        officialWebsite: directSrvWebsite.trim() || undefined
+      });
 
-    addPost({
-      title: directSrvName.trim(),
-      bengaliTitle: directSrvBengaliName.trim() || undefined,
-      slug: directSrvName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      contentType: 'service',
-      summary: directSrvShortDesc.trim() || directSrvName.trim(),
-      content: `Digital service: ${directSrvName}. Fee: ${directSrvCharges}. Processing Time: ${directSrvProcessingTime}. Booking available through SDH portal.`,
-      categoryId: 'cat-6',
-      featuredImage: directSrvImage.trim() || undefined,
-      authorId: currentUser.id,
-      status: 'published',
-      organization: directSrvCategory.trim(),
-      amount: directSrvCharges.trim(),
-      officialUrl: directSrvWebsite.trim()
-    });
+      await addPost({
+        title: directSrvName.trim(),
+        bengaliTitle: directSrvBengaliName.trim() || undefined,
+        slug: directSrvName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        contentType: 'service',
+        summary: directSrvShortDesc.trim() || directSrvName.trim(),
+        content: `Digital service: ${directSrvName}. Fee: ${directSrvCharges}. Processing Time: ${directSrvProcessingTime}. Booking available through SDH portal.`,
+        categoryId: 'cat-6',
+        featuredImage: directSrvImage.trim() || undefined,
+        authorId: currentUser?.id || 'admin',
+        status: 'published',
+        organization: directSrvCategory.trim(),
+        amount: directSrvCharges.trim(),
+        officialUrl: directSrvWebsite.trim()
+      });
 
-    setNewServiceModal(false);
-    setDirectSrvName('');
-    setDirectSrvBengaliName('');
-    setDirectSrvCategory('Application Assistance');
-    setDirectSrvShortDesc('');
-    setDirectSrvWebsite('');
-    setDirectSrvImage('');
+      setNewServiceModal(false);
+      setDirectSrvName('');
+      setDirectSrvBengaliName('');
+      setDirectSrvCategory('Application Assistance');
+      setDirectSrvShortDesc('');
+      setDirectSrvWebsite('');
+      setDirectSrvImage('');
+      alert('Digital service published successfully and saved permanently to Firebase!');
+    } catch (err: any) {
+      console.error('Failed to create digital service:', err);
+      alert(`Failed to save digital service: ${err?.message || 'Database write failed. Form data preserved.'}`);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -1964,16 +2013,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={e => {
+                          onChange={async e => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                if (typeof reader.result === 'string') {
-                                  updateLogo(reader.result);
-                                }
-                              };
-                              reader.readAsDataURL(file);
+                              const compressed = await compressImage(file, 600, 600, 0.8);
+                              updateLogo(compressed);
                             }
                           }}
                         />
@@ -2318,16 +2362,11 @@ service cloud.firestore {
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={e => {
+                        onChange={async e => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              if (typeof reader.result === 'string') {
-                                setFeaturedImage(reader.result);
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                            const compressed = await compressImage(file);
+                            setFeaturedImage(compressed);
                           }
                         }}
                       />
@@ -2582,9 +2621,19 @@ service cloud.firestore {
                 </button>
                 <button 
                   type="submit" 
-                  className="w-2/3 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition"
+                  disabled={isPublishing}
+                  className={`w-2/3 py-3.5 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                    isPublishing ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+                  }`}
                 >
-                  Publish Immediately
+                  {isPublishing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Publishing to Database...</span>
+                    </>
+                  ) : (
+                    <span>Publish Immediately</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -3074,16 +3123,11 @@ service cloud.firestore {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={e => {
+                      onChange={async e => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (typeof reader.result === 'string') {
-                              setDirectMatImage(reader.result);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          const compressed = await compressImage(file);
+                          setDirectMatImage(compressed);
                         }
                       }}
                     />
@@ -3156,9 +3200,19 @@ service cloud.firestore {
                 </button>
                 <button
                   type="submit"
-                  className="w-2/3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition text-xs"
+                  disabled={isPublishing}
+                  className={`w-2/3 py-3 text-white font-bold rounded-xl shadow transition text-xs flex items-center justify-center gap-2 cursor-pointer ${
+                    isPublishing ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
                 >
-                  Publish Study Material
+                  {isPublishing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Publishing Material...</span>
+                    </>
+                  ) : (
+                    <span>Publish Study Material</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -3287,16 +3341,11 @@ service cloud.firestore {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={e => {
+                      onChange={async e => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (typeof reader.result === 'string') {
-                              setDirectSrvImage(reader.result);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          const compressed = await compressImage(file);
+                          setDirectSrvImage(compressed);
                         }
                       }}
                     />
@@ -3393,9 +3442,19 @@ service cloud.firestore {
                 </button>
                 <button
                   type="submit"
-                  className="w-2/3 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow transition text-xs"
+                  disabled={isPublishing}
+                  className={`w-2/3 py-3 text-white font-bold rounded-xl shadow transition text-xs flex items-center justify-center gap-2 cursor-pointer ${
+                    isPublishing ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
+                  }`}
                 >
-                  Publish Digital Service
+                  {isPublishing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Publishing Service...</span>
+                    </>
+                  ) : (
+                    <span>Publish Digital Service</span>
+                  )}
                 </button>
               </div>
             </form>

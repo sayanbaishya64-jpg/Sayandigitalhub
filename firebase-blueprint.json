@@ -19,6 +19,56 @@
       },
       "required": ["id", "title", "slug", "contentType", "summary", "content", "categoryId", "authorId", "status", "createdAt", "updatedAt"]
     },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Important notices and banners",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "type"]
+    },
+    "StudyMaterial": {
+      "title": "StudyMaterial",
+      "description": "Educational material resources",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "topicName": { "type": "string" },
+        "subject": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "detailedDescription": { "type": "string" },
+        "classLevel": { "type": "string" },
+        "author": { "type": "string" },
+        "language": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" }
+      },
+      "required": ["id", "topicName", "subject", "shortDescription", "detailedDescription", "classLevel", "author", "language", "fileUrl", "fileName", "fileType"]
+    },
+    "DigitalService": {
+      "title": "DigitalService",
+      "description": "Online service offerings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "shortDescription": { "type": "string" },
+        "detailedDescription": { "type": "string" },
+        "icon": { "type": "string" },
+        "eligibility": { "type": "string" },
+        "process": { "type": "string" },
+        "charges": { "type": "string" },
+        "processingTime": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "shortDescription", "detailedDescription", "icon", "eligibility", "process", "charges", "processingTime"]
+    },
     "User": {
       "title": "User",
       "description": "Application user",
@@ -53,6 +103,18 @@
     "posts": {
       "schema": "Post",
       "description": "Collection of all content posts"
+    },
+    "announcements": {
+      "schema": "Announcement",
+      "description": "Collection of announcements and banners"
+    },
+    "studyMaterials": {
+      "schema": "StudyMaterial",
+      "description": "Collection of study materials"
+    },
+    "digitalServices": {
+      "schema": "DigitalService",
+      "description": "Collection of digital services"
     },
     "users": {
       "schema": "User",
