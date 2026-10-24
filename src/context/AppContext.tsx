@@ -28,7 +28,8 @@ import {
   getDocs,
   query,
   where,
-  limit
+  limit,
+  deleteField
 } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -73,6 +74,7 @@ interface AppContextType {
   
   settings: WebsiteSettings;
   updateSettings: (newSettings: Partial<WebsiteSettings>) => Promise<void> | void;
+  updateLogo: (logoUrl: string) => Promise<void> | void;
   
   announcements: Announcement[];
   addAnnouncement: (ann: Omit<Announcement, 'id'>) => Promise<void> | void;
@@ -1919,11 +1921,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sdh_settings', JSON.stringify(mergedSettings));
     logAction('UPDATE_SETTINGS', 'Updated website settings');
     try {
-      await setDoc(doc(db, 'settings', 'general'), cleanPayload(mergedSettings), { merge: true });
+      // Exclude logoUrl from general settings to avoid document size limit and remove if present
+      const { logoUrl, ...settingsWithoutLogo } = mergedSettings;
+      await setDoc(doc(db, 'settings', 'general'), {
+        ...cleanPayload(settingsWithoutLogo),
+        logoUrl: deleteField()
+      }, { merge: true });
       console.log('Firebase backend: Saved website settings successfully');
     } catch (e) {
       console.error('Firebase backend update settings error:', e);
       handleFirestoreError(e, OperationType.WRITE, 'settings/general');
+    }
+  };
+
+  const updateLogo = async (logoUrl: string) => {
+    const updatedSettings = { ...settings, logoUrl };
+    setSettings(updatedSettings);
+    localStorage.setItem('sdh_settings', JSON.stringify(updatedSettings));
+    logAction('UPDATE_LOGO', 'Updated website logo');
+    try {
+      await setDoc(doc(db, 'settings', 'logo'), { logoUrl }, { merge: true });
+      console.log('Firebase backend: Saved logo successfully');
+    } catch (e) {
+      console.error('Firebase backend update logo error:', e);
+      handleFirestoreError(e, OperationType.WRITE, 'settings/logo');
     }
   };
 
@@ -2019,7 +2040,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       digitalServices, addDigitalService, updateDigitalService, deleteDigitalService,
       appointments, bookAppointment, updateAppointmentStatus,
       categories, addCategory, deleteCategory,
-      settings, updateSettings,
+      settings, updateSettings, updateLogo,
       announcements, addAnnouncement, deleteAnnouncement,
       users, updateUserRole, toggleUserStatus,
       auditLogs, logAction,

@@ -1956,7 +1956,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 if (typeof reader.result === 'string') {
-                                  updateSettings({ logoUrl: reader.result });
+                                  updateLogo(reader.result);
                                 }
                               };
                               reader.readAsDataURL(file);
@@ -1968,7 +1968,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                       {settings.logoUrl && (
                         <button
                           type="button"
-                          onClick={() => updateSettings({ logoUrl: '' })}
+                          onClick={() => updateLogo('')}
                           className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition"
                         >
                           Remove Logo
@@ -1982,7 +1982,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                         type="url"
                         value={settings.logoUrl || ''}
                         placeholder="https://images.unsplash.com/... or image URL"
-                        onChange={e => updateSettings({ logoUrl: e.target.value })}
+                        onChange={e => updateLogo(e.target.value)}
                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs text-slate-800 outline-none focus:border-indigo-600"
                       />
                     </div>
@@ -1998,7 +1998,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => updateSettings({ logoUrl: preset.url })}
+                          onClick={() => updateLogo(preset.url)}
                           className="text-[10px] font-bold bg-white border border-slate-200 hover:border-indigo-400 text-slate-600 hover:text-indigo-600 px-2.5 py-1 rounded-lg transition shadow-sm cursor-pointer"
                         >
                           {preset.label}

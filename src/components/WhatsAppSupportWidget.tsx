@@ -25,6 +25,25 @@ export const WhatsAppSupportWidget: React.FC<WhatsAppSupportWidgetProps> = ({
   const [selectedTopicKey, setSelectedTopicKey] = useState<string>('');
   const [hasUnreadNotification, setHasUnreadNotification] = useState(true);
 
+  // Sync contextual prefill whenever activePage or customSectionTitle changes
+  useEffect(() => {
+    if (!whatsappConfig.enabled) return;
+    const allowed = whatsappConfig.allowedPages || ['all'];
+    const isAllowedOnThisPage = allowed.includes('all') || allowed.includes(activePage);
+    if (!isAllowedOnThisPage) return;
+
+    const contextualMessage = getContextualPrefill(whatsappConfig, activePage, customSectionTitle);
+    setUserQuery(contextualMessage);
+    
+    // Also set selected chip key
+    if (activePage.includes('job')) setSelectedTopicKey('jobs');
+    else if (activePage.includes('scholarship')) setSelectedTopicKey('scholarships');
+    else if (activePage.includes('service')) setSelectedTopicKey('digital-services');
+    else if (activePage.includes('appointment')) setSelectedTopicKey('book-appointment');
+    else if (activePage.includes('material')) setSelectedTopicKey('study-materials');
+    else setSelectedTopicKey('general');
+  }, [activePage, customSectionTitle, whatsappConfig]);
+
   // If globally disabled, do not render
   if (!whatsappConfig.enabled) {
     return null;
@@ -37,19 +56,6 @@ export const WhatsAppSupportWidget: React.FC<WhatsAppSupportWidgetProps> = ({
     return null;
   }
 
-  // Sync contextual prefill whenever activePage or customSectionTitle changes
-  useEffect(() => {
-    const contextualMessage = getContextualPrefill(whatsappConfig, activePage, customSectionTitle);
-    setUserQuery(contextualMessage);
-    
-    // Also set selected chip key
-    if (activePage.includes('job')) setSelectedTopicKey('jobs');
-    else if (activePage.includes('scholarship')) setSelectedTopicKey('scholarships');
-    else if (activePage.includes('service')) setSelectedTopicKey('digital-services');
-    else if (activePage.includes('appointment')) setSelectedTopicKey('book-appointment');
-    else if (activePage.includes('material')) setSelectedTopicKey('study-materials');
-    else setSelectedTopicKey('general');
-  }, [activePage, customSectionTitle, whatsappConfig]);
 
   const handleOpenWidget = () => {
     setIsOpen(!isOpen);
