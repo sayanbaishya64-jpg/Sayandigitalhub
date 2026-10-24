@@ -1,24 +1,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isSuperAdmin() {
-      return isSignedIn() && 
-        request.auth.token.email != null && 
-        request.auth.token.email.lower() == 'sayanbaishya64@gmail.com';
+      return isSignedIn() && getUserData().role == 'super_admin';
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super_admin'])
-      );
+      return isSignedIn() && (getUserData().role in ['admin', 'super_admin']);
     }
 
     function isOwner(userId) {
@@ -27,74 +24,74 @@ service cloud.firestore {
 
     // 1. User Profiles Collection
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isOwner(userId) || isAdmin() || true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isSuperAdmin();
     }
 
-    // 2. Posts Collection (Jobs, Scholarships, Results, Exam Routine, Admissions)
+    // 2. Posts Collection
     match /posts/{postId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 3. Study Materials Collection
     match /studyMaterials/{materialId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 4. Digital Services Collection
     match /digitalServices/{serviceId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 5. Appointments Collection
     match /appointments/{appointmentId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.customerId || isAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == resource.data.customerId || isAdmin());
     }
 
     // 6. Categories Collection
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 7. Announcements Collection
     match /announcements/{announcementId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 8. Content Templates Collection
     match /contentTemplates/{templateId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
 
     // 9. Website Settings Collection
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 10. Audit Logs Collection
     match /auditLogs/{logId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSuperAdmin();
+      allow write: if false;
     }
 
     // 11. Website Sections Collection
     match /websiteSections/{sectionId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 12. Availability Rules Collection
     match /availabilityRules/{ruleId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 13. Test / Health Check

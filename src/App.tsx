@@ -26,7 +26,7 @@ function MainApp() {
   const [activePage, setActivePage] = useState<string>('home');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(!currentUser); // Automatically prompt first-visit registration if unauthenticated
+  const [authOpen, setAuthOpen] = useState(false); // Automatically prompt first-visit registration if unauthenticated
 
   useEffect(() => {
     if (currentUser) {
@@ -67,7 +67,7 @@ function MainApp() {
     }
 
     // Protected routes check for unauthenticated visitors
-    if ((activePage === 'customer-dashboard' || activePage === 'admin-dashboard' || activePage === 'book-appointment') && !currentUser) {
+    if ((activePage === 'customer-dashboard' || activePage === 'admin-dashboard' || activePage === 'super-admin-dashboard' || activePage === 'book-appointment') && !currentUser) {
       return (
         <div className="max-w-md mx-auto my-20 bg-[#0F172A] border border-[#263B5A] p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
           <h2 className="text-xl font-black text-[#00D4FF]">Registration Required</h2>
@@ -84,22 +84,46 @@ function MainApp() {
       );
     }
 
-    if (activePage === 'admin-dashboard' && !['super_admin', 'admin', 'web_manager', 'web_editor'].includes(currentUser?.role as string)) {
-      return (
-        <div className="max-w-md mx-auto my-20 bg-rose-950/40 border border-rose-500/40 p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
-          <h2 className="text-xl font-black text-rose-400">Access Denied</h2>
-          <p className="text-xs text-rose-200">
-            Administrator permissions are required to view the Admin Dashboard.
-          </p>
-          <button
-            onClick={() => setActivePage('home')}
-            className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
-          >
-            Return to Homepage
-          </button>
-        </div>
-      );
+    // Role-based access control
+    if ((activePage === 'admin-dashboard' || activePage === 'super-admin-dashboard')) {
+      const isSuperAdmin = currentUser?.role === 'super_admin';
+      const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
+      
+      if (activePage === 'super-admin-dashboard' && !isSuperAdmin) {
+        return (
+          <div className="max-w-md mx-auto my-20 bg-rose-950/40 border border-rose-500/40 p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
+            <h2 className="text-xl font-black text-rose-400">Access Denied</h2>
+            <p className="text-xs text-rose-200">
+              Super Administrator permissions are required to view this dashboard.
+            </p>
+            <button
+              onClick={() => setActivePage('home')}
+              className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
+            >
+              Return to Homepage
+            </button>
+          </div>
+        );
+      }
+      
+      if (activePage === 'admin-dashboard' && !isAdmin) {
+        return (
+          <div className="max-w-md mx-auto my-20 bg-rose-950/40 border border-rose-500/40 p-8 rounded-3xl text-center text-white space-y-4 shadow-2xl">
+            <h2 className="text-xl font-black text-rose-400">Access Denied</h2>
+            <p className="text-xs text-rose-200">
+              Administrator permissions are required to view the Admin Dashboard.
+            </p>
+            <button
+              onClick={() => setActivePage('home')}
+              className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
+            >
+              Return to Homepage
+            </button>
+          </div>
+        );
+      }
     }
+
 
     switch (activePage) {
       case 'home':
