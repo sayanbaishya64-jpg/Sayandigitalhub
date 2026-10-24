@@ -666,7 +666,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('sdh_current_user');
-    return saved ? JSON.parse(saved) : initialUsers[0]; // Default to Super Admin for immediate testing ease, or null
+    return saved ? JSON.parse(saved) : null; // Do not default to Super Admin
   });
 
   // Single-active-device session revocation watcher
