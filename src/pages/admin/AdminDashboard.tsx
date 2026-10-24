@@ -18,7 +18,7 @@ interface AdminDashboardProps {
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage }) => {
   const { 
-    currentUser, posts, addPost, deletePost, 
+    currentUser, posts, addPost, updatePost, deletePost, 
     studyMaterials, addStudyMaterial, deleteStudyMaterial,
     digitalServices, addDigitalService, deleteDigitalService,
     appointments, updateAppointmentStatus,
@@ -34,6 +34,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
   
   // Modals
   const [newPostModal, setNewPostModal] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [newTemplateModal, setNewTemplateModal] = useState(false);
   const [newMaterialModal, setNewMaterialModal] = useState(false);
   const [newServiceModal, setNewServiceModal] = useState(false);
@@ -239,6 +240,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
 
   const [isPublishing, setIsPublishing] = useState(false);
 
+  const handleEditPostModal = (post: Post) => {
+    setEditingPostId(post.id);
+    setContentType(post.contentType);
+    setTitle(post.title || '');
+    setBengaliTitle(post.bengaliTitle || '');
+    setSummary(post.summary || '');
+    setBengaliSummary(post.bengaliSummary || '');
+    setContent(post.content || '');
+    setOrganization(post.organization || '');
+    setTotalVacancies(post.totalVacancies || '');
+    setQualification(post.qualification || '');
+    setLastDate(post.lastDate || '');
+    setOfficialUrl(post.officialUrl || '');
+    setApplyUrl(post.applyUrl || '');
+    setAmount(post.amount || '');
+    setExamDate(post.examDate || '');
+    setFeaturedImage(post.featuredImage || '');
+    setNewPostModal(true);
+  };
+
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanTitle = title.trim();
@@ -250,74 +271,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
     setIsPublishing(true);
 
     try {
-      if (contentType === 'material') {
-        await addStudyMaterial({
-          topicName: cleanTitle,
-          bengaliTopicName: bengaliTitle.trim() || undefined,
-          subject: matSubject.trim() || organization.trim() || 'General Studies',
-          shortDescription: summary.trim() || cleanTitle,
-          detailedDescription: content.trim(),
-          classLevel: qualification.trim() || 'All Levels',
-          author: currentUser?.name || 'SDH Admin',
-          language: 'Both',
-          fileUrl: matDriveUrl.trim() || officialUrl.trim() || 'https://drive.google.com',
-          fileName: cleanTitle.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
-          fileType: 'drive',
-          accessPermission: matAccess,
-          imageUrl: featuredImage.trim() || undefined
-        });
-      } else if (contentType === 'service') {
-        await addDigitalService({
-          name: cleanTitle,
-          bengaliName: bengaliTitle.trim() || undefined,
-          category: srvCategory.trim() || organization.trim() || 'Digital Services',
-          shortDescription: summary.trim() || cleanTitle,
-          detailedDescription: content.trim(),
-          icon: 'MonitorSmartphone',
-          imageUrl: featuredImage.trim() || undefined,
-          eligibility: qualification.trim() || 'All Applicants',
-          requiredDocuments: ['Aadhaar Card', 'Academic Mark Sheets', 'Photo Specimen'],
-          process: content.trim() || 'Submit details online or visit our hub.',
-          charges: srvCharges.trim() || amount.trim() || '₹100',
-          processingTime: srvProcessingTime.trim() || lastDate.trim() || '1 - 2 Days',
-          availability: true,
-          bookingRequired: true,
-          officialWebsite: officialUrl.trim() || undefined
-        });
-      } else if (contentType === 'announcement') {
-        await addAnnouncement({
+      if (editingPostId) {
+        await updatePost(editingPostId, {
           title: cleanTitle,
           bengaliTitle: bengaliTitle.trim() || undefined,
-          text: content.trim() || summary.trim() || cleanTitle,
-          bengaliText: bengaliSummary.trim() || bengaliTitle.trim() || cleanTitle,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          active: true
+          slug: cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+          contentType,
+          summary: summary.trim(),
+          bengaliSummary: bengaliSummary.trim() || undefined,
+          content: content.trim(),
+          featuredImage: featuredImage.trim() || undefined,
+          organization: organization.trim() || matSubject.trim() || srvCategory.trim() || undefined,
+          totalVacancies: totalVacancies.trim() || undefined,
+          qualification: qualification.trim() || undefined,
+          lastDate: lastDate.trim() || srvProcessingTime.trim() || undefined,
+          officialUrl: officialUrl.trim() || matDriveUrl.trim() || undefined,
+          applyUrl: applyUrl.trim() || undefined,
+          amount: amount.trim() || srvCharges.trim() || undefined,
+          examDate: examDate.trim() || undefined
+        });
+      } else {
+        if (contentType === 'material') {
+          await addStudyMaterial({
+            topicName: cleanTitle,
+            bengaliTopicName: bengaliTitle.trim() || undefined,
+            subject: matSubject.trim() || organization.trim() || 'General Studies',
+            shortDescription: summary.trim() || cleanTitle,
+            detailedDescription: content.trim(),
+            classLevel: qualification.trim() || 'All Levels',
+            author: currentUser?.name || 'SDH Admin',
+            language: 'Both',
+            fileUrl: matDriveUrl.trim() || officialUrl.trim() || 'https://drive.google.com',
+            fileName: cleanTitle.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+            fileType: 'drive',
+            accessPermission: matAccess,
+            imageUrl: featuredImage.trim() || undefined
+          });
+        } else if (contentType === 'service') {
+          await addDigitalService({
+            name: cleanTitle,
+            bengaliName: bengaliTitle.trim() || undefined,
+            category: srvCategory.trim() || organization.trim() || 'Digital Services',
+            shortDescription: summary.trim() || cleanTitle,
+            detailedDescription: content.trim(),
+            icon: 'MonitorSmartphone',
+            imageUrl: featuredImage.trim() || undefined,
+            eligibility: qualification.trim() || 'All Applicants',
+            requiredDocuments: ['Aadhaar Card', 'Academic Mark Sheets', 'Photo Specimen'],
+            process: content.trim() || 'Submit details online or visit our hub.',
+            charges: srvCharges.trim() || amount.trim() || '₹100',
+            processingTime: srvProcessingTime.trim() || lastDate.trim() || '1 - 2 Days',
+            availability: true,
+            bookingRequired: true,
+            officialWebsite: officialUrl.trim() || undefined
+          });
+        } else if (contentType === 'announcement') {
+          await addAnnouncement({
+            title: cleanTitle,
+            bengaliTitle: bengaliTitle.trim() || undefined,
+            text: content.trim() || summary.trim() || cleanTitle,
+            bengaliText: bengaliSummary.trim() || bengaliTitle.trim() || cleanTitle,
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            active: true
+          });
+        }
+
+        await addPost({
+          title: cleanTitle,
+          bengaliTitle: bengaliTitle.trim() || undefined,
+          slug: cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+          contentType,
+          summary: summary.trim(),
+          bengaliSummary: bengaliSummary.trim() || undefined,
+          content: content.trim(),
+          categoryId: contentType === 'material' ? 'cat-5' : contentType === 'service' ? 'cat-6' : 'cat-1',
+          featuredImage: featuredImage.trim() || undefined,
+          authorId: currentUser?.id || 'admin',
+          status: 'published',
+          organization: organization.trim() || matSubject.trim() || srvCategory.trim() || undefined,
+          totalVacancies: totalVacancies.trim() || undefined,
+          qualification: qualification.trim() || undefined,
+          lastDate: lastDate.trim() || srvProcessingTime.trim() || undefined,
+          officialUrl: officialUrl.trim() || matDriveUrl.trim() || undefined,
+          applyUrl: applyUrl.trim() || undefined,
+          amount: amount.trim() || srvCharges.trim() || undefined,
+          examDate: examDate.trim() || undefined
         });
       }
 
-      await addPost({
-        title: cleanTitle,
-        bengaliTitle: bengaliTitle.trim() || undefined,
-        slug: cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-        contentType,
-        summary: summary.trim(),
-        bengaliSummary: bengaliSummary.trim() || undefined,
-        content: content.trim(),
-        categoryId: contentType === 'material' ? 'cat-5' : contentType === 'service' ? 'cat-6' : 'cat-1',
-        featuredImage: featuredImage.trim() || undefined,
-        authorId: currentUser?.id || 'admin',
-        status: 'published',
-        organization: organization.trim() || matSubject.trim() || srvCategory.trim() || undefined,
-        totalVacancies: totalVacancies.trim() || undefined,
-        qualification: qualification.trim() || undefined,
-        lastDate: lastDate.trim() || srvProcessingTime.trim() || undefined,
-        officialUrl: officialUrl.trim() || matDriveUrl.trim() || undefined,
-        applyUrl: applyUrl.trim() || undefined,
-        amount: amount.trim() || srvCharges.trim() || undefined,
-        examDate: examDate.trim() || undefined
-      });
-
+      setEditingPostId(null);
       setNewPostModal(false);
       setTitle('');
       setBengaliTitle('');
@@ -772,7 +815,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-900">Content Management System (CMS)</h3>
             <button
-              onClick={() => setNewPostModal(true)}
+              onClick={() => {
+                setEditingPostId(null);
+                setTitle('');
+                setBengaliTitle('');
+                setSummary('');
+                setBengaliSummary('');
+                setContent('');
+                setOrganization('');
+                setTotalVacancies('');
+                setQualification('');
+                setLastDate('');
+                setOfficialUrl('');
+                setApplyUrl('');
+                setAmount('');
+                setExamDate('');
+                setFeaturedImage('');
+                setNewPostModal(true);
+              }}
               className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -802,7 +862,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                     </td>
                     <td className="p-4 text-slate-600">{post.organization || '-'}</td>
                     <td className="p-4 text-slate-500 text-xs">{post.createdAt}</td>
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-right flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleEditPostModal(post)}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                        title="Edit Post"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => deletePost(post.id)}
                         className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
@@ -2278,9 +2345,11 @@ service cloud.firestore {
             <div className="flex justify-between items-center border-b pb-4">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
-                  {selectedTemplateId 
-                    ? `Publish with Template: ${templates.find(t => t.id === selectedTemplateId)?.name || 'Custom Template'}`
-                    : 'Create New Website Update (CMS)'}
+                  {editingPostId
+                    ? 'Edit Published Update (CMS)'
+                    : selectedTemplateId 
+                      ? `Publish with Template: ${templates.find(t => t.id === selectedTemplateId)?.name || 'Custom Template'}`
+                      : 'Create New Website Update (CMS)'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Fill in the details below to publish directly to the live website feed and corresponding section.
