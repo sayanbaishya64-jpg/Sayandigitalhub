@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { translations } from '../../i18n/translations';
-import { CalendarClock, CheckCircle, Calendar, Clock, User, Phone, Mail, AlertTriangle, Lock, Users } from 'lucide-react';
+import { CalendarClock, CheckCircle, Calendar, Clock, User, Phone, Mail, AlertTriangle, Lock, Users, Plus, Edit, Trash2, ShieldCheck, Sparkles, ExternalLink } from 'lucide-react';
 import { OtpConsentSection } from '../../components/OtpConsentSection';
-import { DEFAULT_HOURLY_TIME_SLOTS } from '../../types';
+import { DEFAULT_HOURLY_TIME_SLOTS, DigitalService } from '../../types';
+import { DigitalServiceModal } from '../../components/DigitalServiceModal';
 
 export const BookAppointmentPage: React.FC = () => {
-  const { digitalServices, bookAppointment, currentUser, language, checkSlotAvailability, checkDateAvailability, settings } = useApp();
+  const { digitalServices, bookAppointment, deleteDigitalService, currentUser, language, checkSlotAvailability, checkDateAvailability, settings } = useApp();
   const t = translations[language];
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -21,6 +22,27 @@ export const BookAppointmentPage: React.FC = () => {
   const [otpConsentAccepted, setOtpConsentAccepted] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Admin Digital Service management state
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [serviceToEdit, setServiceToEdit] = useState<DigitalService | null>(null);
+
+  const isAdmin = Boolean(
+    currentUser && (
+      currentUser.role === 'admin' || 
+      currentUser.role === 'super_admin' || 
+      currentUser.role.toLowerCase().includes('admin')
+    )
+  );
+
+  const selectedService = digitalServices.find(s => s.id === selectedServiceId) || digitalServices[0];
+
+  // Keep selectedServiceId valid if list updates
+  useEffect(() => {
+    if (digitalServices.length > 0 && !digitalServices.some(s => s.id === selectedServiceId)) {
+      setSelectedServiceId(digitalServices[0].id);
+    }
+  }, [digitalServices, selectedServiceId]);
 
   const maxCapacity = settings.maxCapacityPerSlot || 5;
 
@@ -137,20 +159,106 @@ export const BookAppointmentPage: React.FC = () => {
             
             {/* Service Selection */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-2">
-                {t.selectService} *
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  {t.selectService} *
+                </label>
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-900/60 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> Admin Tools
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setServiceToEdit(null);
+                        setIsServiceModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-sm cursor-pointer"
+                      title="Add new digital service"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add New Service</span>
+                    </button>
+                    {selectedService && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setServiceToEdit(selectedService);
+                            setIsServiceModalOpen(true);
+                          }}
+                          className="text-[11px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#1f293d] hover:bg-slate-200 dark:hover:bg-[#263449] px-2.5 py-1 rounded-lg transition flex items-center gap-1 border border-slate-200 dark:border-[#263449] cursor-pointer"
+                          title="Edit selected service details"
+                        >
+                          <Edit className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                          <span>Edit Service</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to delete "${selectedService.name}"? This action cannot be undone.`)) {
+                              await deleteDigitalService(selectedService.id);
+                            }
+                          }}
+                          className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-2 py-1 rounded-lg transition flex items-center gap-1 border border-rose-200 dark:border-rose-900/50 cursor-pointer"
+                          title="Delete selected service"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete Service</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <select
                 value={selectedServiceId}
                 onChange={e => setSelectedServiceId(e.target.value)}
-                className="w-full p-3.5 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-[#263449] rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:bg-white dark:focus:bg-[#080D18] focus:border-[#2563EB] transition"
+                className="w-full p-3.5 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-[#263449] rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:bg-white dark:focus:bg-[#080D18] focus:border-[#2563EB] transition cursor-pointer"
               >
                 {digitalServices.map(srv => (
                   <option key={srv.id} value={srv.id}>
-                    {srv.name} ({srv.charges})
+                    {srv.name} ({srv.charges}) {srv.bengaliName ? `- ${srv.bengaliName}` : ''}
                   </option>
                 ))}
               </select>
+
+              {/* Selected Service Quick Info Summary */}
+              {selectedService && (
+                <div className="mt-3 p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    {selectedService.imageUrl && (
+                      <img src={selectedService.imageUrl} alt={selectedService.name} className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                    )}
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                        {language === 'bn' && selectedService.bengaliName ? selectedService.bengaliName : selectedService.name}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        Category: {selectedService.category} • Processing: {selectedService.processingTime}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold px-2.5 py-1 rounded-lg">
+                      Fee: {selectedService.charges}
+                    </span>
+                    {selectedService.officialWebsite && (
+                      <a
+                        href={selectedService.officialWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-semibold"
+                      >
+                        <span>Official Portal</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Customer Information */}
@@ -349,6 +457,20 @@ export const BookAppointmentPage: React.FC = () => {
           </form>
         )}
       </div>
+
+      {/* Admin Digital Service Add & Edit Modal */}
+      {isAdmin && (
+        <DigitalServiceModal
+          isOpen={isServiceModalOpen}
+          onClose={() => setIsServiceModalOpen(false)}
+          serviceToEdit={serviceToEdit}
+          onSuccess={(savedId) => {
+            if (savedId && savedId !== 'new') {
+              setSelectedServiceId(savedId);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

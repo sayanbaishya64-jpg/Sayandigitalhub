@@ -46,10 +46,18 @@ const safeSetItem = (key: string, value: string) => {
       e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
     ) {
       console.warn(`LocalStorage quota exceeded for key: ${key}. Data not persisted locally.`);
-      // Optional: Clear some space if needed, but for now just warn to prevent crash
     } else {
       console.error(`Error saving to LocalStorage for key: ${key}`, e);
     }
+  }
+};
+
+const safeGetItem = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    console.warn(`Error reading from LocalStorage for key: ${key}`, e);
+    return null;
   }
 };
 
@@ -1019,17 +1027,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 3. Digital Services Collection Listener & Seeder
     const unsubServices = onSnapshot(collection(db, 'digitalServices'), (snapshot) => {
+      let deletedIds: Set<string> = new Set();
+      try {
+        const raw = safeGetItem('sdh_deleted_services');
+        if (raw) deletedIds = new Set(JSON.parse(raw));
+      } catch (err) {}
+
       if (!snapshot.empty) {
         const loaded: DigitalService[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as DigitalService;
-          loaded.push({ ...data, id: data.id || docSnap.id });
+          const srvId = data.id || docSnap.id;
+          if (!deletedIds.has(srvId)) {
+            loaded.push({ ...data, id: srvId });
+          }
         });
         const loadedIds = new Set(loaded.map(s => s.id));
-        const missingInitial = initialDigitalServices.filter(s => !loadedIds.has(s.id));
+        const missingInitial = initialDigitalServices.filter(s => !loadedIds.has(s.id) && !deletedIds.has(s.id));
         setDigitalServices([...loaded, ...missingInitial]);
       } else {
-        setDigitalServices(initialDigitalServices);
+        setDigitalServices(initialDigitalServices.filter(s => !deletedIds.has(s.id)));
       }
     }, (error) => {
       console.warn('Firestore services snapshot warning:', error);
@@ -1594,9 +1611,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteDigitalService = async (id: string) => {
     logAction('DELETE_DIGITAL_SERVICE', `Deleting digital service ID: ${id}`);
     try {
+      const raw = safeGetItem('sdh_deleted_services');
+      const list: string[] = raw ? JSON.parse(raw) : [];
+      if (!list.includes(id)) {
+        list.push(id);
+        safeSetItem('sdh_deleted_services', JSON.stringify(list));
+      }
+    } catch (err) {}
+
+    setDigitalServices(prev => prev.filter(s => s.id !== id));
+
+    try {
       await deleteDoc(doc(db, 'digitalServices', id));
       console.log('Firebase backend: Deleted digital service successfully:', id);
-      setDigitalServices(prev => prev.filter(s => s.id !== id));
     } catch (e) {
       console.error('Firebase backend delete digital service error:', e);
       handleFirestoreError(e, OperationType.DELETE, `digitalServices/${id}`);

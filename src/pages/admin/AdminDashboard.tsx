@@ -11,6 +11,7 @@ import { buildWhatsAppUrl, validateWhatsAppNumber, formatWhatsAppDisplay, isSupp
 import { AvailabilityManagement } from '../../components/AvailabilityManagement';
 import { compressImage } from '../../utils/imageCompressor';
 import { uploadImageToCloudinary, isCloudinaryConfigured } from '../../lib/cloudinary';
+import { DigitalServiceModal } from '../../components/DigitalServiceModal';
 
 interface AdminDashboardProps {
   setActivePage: (page: string) => void;
@@ -20,7 +21,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
   const { 
     currentUser, posts, addPost, updatePost, deletePost, 
     studyMaterials, addStudyMaterial, deleteStudyMaterial,
-    digitalServices, addDigitalService, deleteDigitalService,
+    digitalServices, addDigitalService, updateDigitalService, deleteDigitalService,
     appointments, updateAppointmentStatus,
     users, updateUserRole, toggleUserStatus,
     settings, updateSettings, updateLogo, auditLogs, language,
@@ -38,6 +39,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
   const [newTemplateModal, setNewTemplateModal] = useState(false);
   const [newMaterialModal, setNewMaterialModal] = useState(false);
   const [newServiceModal, setNewServiceModal] = useState(false);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<DigitalService | null>(null);
   const [newSectionModal, setNewSectionModal] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [previewSection, setPreviewSection] = useState<WebsiteSection | null>(null);
@@ -1024,8 +1027,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
               <p className="text-xs text-slate-500 mt-0.5">Manage digital application services, fee structures, and appointment requirements.</p>
             </div>
             <button
-              onClick={() => setNewServiceModal(true)}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2"
+              onClick={() => {
+                setEditingService(null);
+                setServiceModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Digital Service</span>
@@ -1036,19 +1042,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
             {digitalServices.map(srv => (
               <div key={srv.id} className="bg-white rounded-2xl p-6 shadow-md border border-slate-200 flex flex-col justify-between space-y-4">
                 <div>
+                  {srv.imageUrl && (
+                    <div className="w-full h-32 rounded-xl overflow-hidden mb-3 border border-slate-100 bg-slate-50">
+                      <img src={srv.imageUrl} alt={srv.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full uppercase">
                       {srv.category}
                     </span>
                     <button
-                      onClick={() => deleteDigitalService(srv.id)}
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to delete "${srv.name}"? This action will remove it permanently.`)) {
+                          await deleteDigitalService(srv.id);
+                        }
+                      }}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                       title="Delete Service"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                   <h4 className="font-bold text-slate-900 text-base">{srv.name}</h4>
+                  {srv.bengaliName && <p className="text-xs text-indigo-600 font-medium">{srv.bengaliName}</p>}
                   <p className="text-xs text-slate-600 mt-1 line-clamp-2">{srv.shortDescription}</p>
                   
                   <div className="mt-4 pt-3 border-t border-slate-100 space-y-2 text-xs text-slate-600">
@@ -1069,21 +1085,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setTitle(srv.name);
-                    setContentType('service');
-                    setSummary(srv.shortDescription);
-                    setContent(srv.detailedDescription || srv.shortDescription);
-                    setAmount(srv.charges);
-                    setOrganization(srv.category);
-                    setNewPostModal(true);
-                  }}
-                  className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-200"
-                >
-                  <Edit className="w-3.5 h-3.5" />
-                  <span>Update in CMS</span>
-                </button>
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setEditingService(srv);
+                      setServiceModalOpen(true);
+                    }}
+                    className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-indigo-200 cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Edit Service</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Are you sure you want to delete "${srv.name}"? This action will remove it permanently.`)) {
+                        await deleteDigitalService(srv.id);
+                      }
+                    }}
+                    className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition border border-rose-200 cursor-pointer"
+                    title="Delete Digital Service"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -4073,6 +4097,13 @@ service cloud.firestore {
           </div>
         </div>
       )}
+
+      {/* Reusable Digital Service Management Modal */}
+      <DigitalServiceModal
+        isOpen={serviceModalOpen}
+        onClose={() => setServiceModalOpen(false)}
+        serviceToEdit={editingService}
+      />
     </div>
   );
 };
