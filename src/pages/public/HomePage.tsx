@@ -12,7 +12,7 @@ interface HomePageProps {
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ setActivePage, onSelectPost }) => {
-  const { posts, digitalServices, language, settings } = useApp();
+  const { posts, digitalServices, language, settings, isPostsLoaded } = useApp();
   const t = translations[language];
   const [heroSearchQuery, setHeroSearchQuery] = useState('');
 
@@ -244,7 +244,11 @@ export const HomePage: React.FC<HomePageProps> = ({ setActivePage, onSelectPost 
           </button>
         </div>
 
-        {jobsList.length === 0 ? (
+        {!isPostsLoaded ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : jobsList.length === 0 ? (
           <div className="bg-white dark:bg-[#111827] rounded-2xl p-10 border border-slate-200 dark:border-[#263449] text-center space-y-3">
             <Briefcase className="w-10 h-10 text-slate-400 mx-auto" />
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No active job notices at the moment</h3>
@@ -313,7 +317,11 @@ export const HomePage: React.FC<HomePageProps> = ({ setActivePage, onSelectPost 
           </button>
         </div>
 
-        {scholarshipsList.length === 0 ? (
+        {!isPostsLoaded ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : scholarshipsList.length === 0 ? (
           <div className="bg-white dark:bg-[#111827] rounded-2xl p-10 border border-slate-200 dark:border-[#263449] text-center space-y-3">
             <GraduationCap className="w-10 h-10 text-slate-400 mx-auto" />
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No active scholarship notices</h3>

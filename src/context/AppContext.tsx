@@ -68,6 +68,7 @@ interface AppContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   
+  isPostsLoaded: boolean;
   posts: Post[];
   addPost: (post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void> | void;
   updatePost: (id: string, post: Partial<Post>) => Promise<void> | void;
@@ -727,144 +728,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleDarkMode = () => setIsDarkMode(prev => !prev);
 
-  const [posts, setPosts] = useState<Post[]>(() => {
-    const saved = localStorage.getItem('sdh_posts');
-    return saved ? JSON.parse(saved) : initialPosts;
-  });
+  const safeParse = <T,>(key: string, fallback: T): T => {
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    try {
+      return JSON.parse(saved) as T;
+    } catch (e) {
+      console.warn(`Error parsing localStorage key "${key}":`, e);
+      return fallback;
+    }
+  };
 
-  const [studyMaterials, setStudyMaterials] = useState<StudyMaterial[]>(() => {
-    const saved = localStorage.getItem('sdh_study_materials');
-    return saved ? JSON.parse(saved) : initialStudyMaterials;
-  });
-
-  const [digitalServices, setDigitalServices] = useState<DigitalService[]>(() => {
-    const saved = localStorage.getItem('sdh_digital_services');
-    return saved ? JSON.parse(saved) : initialDigitalServices;
-  });
-
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('sdh_appointments');
-    return saved ? JSON.parse(saved) : initialAppointments;
-  });
-
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('sdh_categories');
-    return saved ? JSON.parse(saved) : initialCategories;
-  });
-
+  const [posts, setPosts] = useState<Post[]>(() => safeParse('sdh_posts', initialPosts));
+  const [isPostsLoaded, setIsPostsLoaded] = useState(false);
+  
+  const [studyMaterials, setStudyMaterials] = useState<StudyMaterial[]>(() => safeParse('sdh_study_materials', initialStudyMaterials));
+  const [digitalServices, setDigitalServices] = useState<DigitalService[]>(() => safeParse('sdh_digital_services', initialDigitalServices));
+  const [appointments, setAppointments] = useState<Appointment[]>(() => safeParse('sdh_appointments', initialAppointments));
+  const [categories, setCategories] = useState<Category[]>(() => safeParse('sdh_categories', initialCategories));
   const [settings, setSettings] = useState<WebsiteSettings>(() => {
-    const saved = localStorage.getItem('sdh_settings');
-    const parsed = saved ? JSON.parse(saved) : {};
+    const parsed = safeParse<Partial<WebsiteSettings>>('sdh_settings', {});
     return { ...defaultSettings, ...parsed };
   });
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
-    const saved = localStorage.getItem('sdh_announcements');
-    return saved ? JSON.parse(saved) : initialAnnouncements;
-  });
-
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => safeParse('sdh_announcements', initialAnnouncements));
   const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('sdh_users');
-    let list: User[] = saved ? JSON.parse(saved) : initialUsers;
+    let list = safeParse<User[]>('sdh_users', initialUsers);
     let foundSuperAdmin = false;
     list = list.map(u => {
       if (u.email.toLowerCase() === 'sayanbaishya64@gmail.com') {
         foundSuperAdmin = true;
-        return {
-          ...u,
-          name: u.name || 'Sayan Baishya',
-          role: 'super_admin' as const,
-          password: 'Sayan8116@',
-          status: 'active' as const
-        };
-      }
-      if (u.role === 'super_admin') {
-        return { ...u, role: 'admin' as const };
+        return { ...u, role: 'super_admin' as const, status: 'active' as const };
       }
       return u;
     });
     if (!foundSuperAdmin) {
       list.unshift({
-        id: 'usr-0',
-        name: 'Sayan Baishya',
-        email: 'sayanbaishya64@gmail.com',
-        password: 'Sayan8116@',
-        role: 'super_admin',
-        status: 'active',
-        createdAt: '2026-01-01'
+        id: 'usr-0', name: 'Sayan Baishya', email: 'sayanbaishya64@gmail.com',
+        password: 'Sayan8116@', role: 'super_admin', status: 'active', createdAt: '2026-01-01'
       });
     }
     return list;
   });
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Here, we would ideally fetch the user's role from Firestore,
-        // but for now, we'll try to find the user in our local "users" state
-        // to get the role, assuming the user already exists.
-        // In a real app, you'd fetch this from the database using firebaseUser.uid.
-        const foundUser = users.find(u => u.email === firebaseUser.email);
-        if (foundUser) {
-          setCurrentUser(foundUser);
-        } else {
-          // If not found, perhaps create a basic user record?
-          // For now, set a basic user with 'customer' role.
-          setCurrentUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || 'Customer',
-            email: firebaseUser.email || '',
-            role: 'customer',
-            status: 'active',
-            createdAt: new Date().toISOString()
-          });
-        }
-      } else {
-        setCurrentUser(null);
-      }
-    });
-    return unsubscribe;
-  }, [users]);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const saved = localStorage.getItem('sdh_audit_logs');
-    return saved ? JSON.parse(saved) : [
-      { id: 'log-1', action: 'SYSTEM_INIT', userId: 'usr-1', userEmail: 'superadmin@sayandigitalhub.in', timestamp: '2026-10-01 10:00:00', details: 'System initialized successfully.' }
-    ];
-  });
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => safeParse('sdh_audit_logs', [
+    { id: 'log-1', action: 'SYSTEM_INIT', userId: 'usr-1', userEmail: 'superadmin@sayandigitalhub.in', timestamp: '2026-10-01 10:00:00', details: 'System initialized successfully.' }
+  ]));
 
   const [templates, setTemplates] = useState<ContentTemplateDef[]>(() => {
-    const saved = localStorage.getItem('sdh_templates');
-    if (saved) {
-      try {
-        const parsed: ContentTemplateDef[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map(t => t.id));
-          const missingInitials = initialTemplates.filter(t => !existingIds.has(t.id));
-          const combined = [...parsed, ...missingInitials];
-          return combined.map(t => {
-            const hasImageField = t.fields.some(f => f.type === 'image' || f.name === 'featuredImage');
-            if (!hasImageField) {
-              return {
-                ...t,
-                fields: [
-                  ...t.fields,
-                  { name: 'featuredImage', label: 'Featured Banner / Poster Image', type: 'image' as const, required: false }
-                ]
-              };
-            }
-            return t;
-          });
-        }
-      } catch (e) {}
-    }
-    return initialTemplates;
+    const parsed = safeParse<ContentTemplateDef[]>('sdh_templates', initialTemplates);
+    const existingIds = new Set(parsed.map(t => t.id));
+    const missingInitials = initialTemplates.filter(t => !existingIds.has(t.id));
+    return [...parsed, ...missingInitials];
   });
 
-  const [websiteSections, setWebsiteSections] = useState<WebsiteSection[]>(() => {
-    const saved = localStorage.getItem('sdh_website_sections');
-    return saved ? JSON.parse(saved) : initialWebsiteSections;
-  });
+  const [websiteSections, setWebsiteSections] = useState<WebsiteSection[]>(() => safeParse('sdh_website_sections', initialWebsiteSections));
+  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(() => safeParse('sdh_availability_rules', initialAvailabilityRules));
+
 
   useEffect(() => {
     safeSetItem('sdh_language', language);
@@ -883,14 +802,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { safeSetItem('sdh_templates', JSON.stringify(templates)); }, [templates]);
   useEffect(() => { safeSetItem('sdh_website_sections', JSON.stringify(websiteSections)); }, [websiteSections]);
 
-  const [availabilityRules, setAvailabilityRules] = useState<AvailabilityRule[]>(() => {
-    const saved = localStorage.getItem('sdh_availability_rules');
-    return saved ? JSON.parse(saved) : initialAvailabilityRules;
-  });
-
-  useEffect(() => {
-    safeSetItem('sdh_availability_rules', JSON.stringify(availabilityRules));
-  }, [availabilityRules]);
 
   const [whatsappConfig, setWhatsAppConfig] = useState<WhatsAppConfig>(() => {
     const saved = localStorage.getItem('sdh_whatsapp_config');
@@ -1046,16 +957,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         loaded.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setPosts(loaded);
+        setIsPostsLoaded(true);
       } else {
-        // First boot: seed initial demo posts to Firestore
-        initialPosts.forEach((p) => {
-          setDoc(doc(db, 'posts', p.id), cleanPayload(p)).catch(err => {
-            console.warn('Seeding post error:', err);
+        // Only seed if we're authenticated as an admin to prevent conflicts
+        if (auth.currentUser) {
+          console.log('Database empty, seeding posts...');
+          initialPosts.forEach((p) => {
+            setDoc(doc(db, 'posts', p.id), cleanPayload(p)).catch(err => {
+              console.warn('Seeding post error:', err);
+            });
           });
-        });
+          setPosts(initialPosts); // Update state immediately during seeding
+        }
+        setIsPostsLoaded(true);
       }
     }, (error) => {
       console.warn('Firestore posts snapshot warning:', error);
+      setIsPostsLoaded(true);
     });
 
     // 2. Study Materials Collection Listener & Seeder
@@ -1066,12 +984,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loaded.push(docSnap.data() as StudyMaterial);
         });
         setStudyMaterials(loaded);
-      } else {
+      } else if (auth.currentUser) {
         initialStudyMaterials.forEach((m) => {
           setDoc(doc(db, 'studyMaterials', m.id), cleanPayload(m)).catch(err => {
             console.warn('Seeding study material error:', err);
           });
         });
+        setStudyMaterials(initialStudyMaterials);
       }
     }, (error) => {
       console.warn('Firestore study materials snapshot warning:', error);
@@ -1085,12 +1004,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loaded.push(docSnap.data() as DigitalService);
         });
         setDigitalServices(loaded);
-      } else {
+      } else if (auth.currentUser) {
         initialDigitalServices.forEach((s) => {
           setDoc(doc(db, 'digitalServices', s.id), cleanPayload(s)).catch(err => {
             console.warn('Seeding service error:', err);
           });
         });
+        setDigitalServices(initialDigitalServices);
       }
     }, (error) => {
       console.warn('Firestore services snapshot warning:', error);
@@ -1105,12 +1025,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         loaded.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         setAppointments(loaded);
-      } else {
+      } else if (auth.currentUser) {
         initialAppointments.forEach((a) => {
           setDoc(doc(db, 'appointments', a.id), cleanPayload(a)).catch(err => {
             console.warn('Seeding appointment error:', err);
           });
         });
+        setAppointments(initialAppointments);
       }
     }, (error) => {
       console.warn('Firestore appointments snapshot warning:', error);
@@ -1178,12 +1099,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         loaded.sort((a, b) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
         setWebsiteSections(loaded);
-      } else {
+      } else if (auth.currentUser) {
         initialWebsiteSections.forEach((s) => {
           setDoc(doc(db, 'websiteSections', s.id), cleanPayload(s)).catch(err => {
             console.warn('Seeding website section error:', err);
           });
         });
+        setWebsiteSections(initialWebsiteSections);
       }
     }, (error) => {
       console.warn('Firestore websiteSections snapshot warning:', error);
@@ -2068,6 +1990,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentUser, sessionRevokedMessage, clearSessionRevokedMessage, login, registerCustomer, sendPasswordResetEmail, resendVerification, logout,
       signInWithGoogle, loginWithGoogleMock, isFirebaseReady: true,
       isDarkMode, toggleDarkMode,
+      isPostsLoaded,
       posts, addPost, updatePost, deletePost,
       studyMaterials, addStudyMaterial, deleteStudyMaterial,
       digitalServices, addDigitalService, updateDigitalService, deleteDigitalService,

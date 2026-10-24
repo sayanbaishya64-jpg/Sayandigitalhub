@@ -8,7 +8,7 @@ interface JobsPageProps {
 }
 
 export const JobsPage: React.FC<JobsPageProps> = ({ onSelectPost }) => {
-  const { posts, language } = useApp();
+  const { posts, language, isPostsLoaded } = useApp();
   const t = translations[language];
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -48,7 +48,11 @@ export const JobsPage: React.FC<JobsPageProps> = ({ onSelectPost }) => {
 
       {/* Jobs List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {jobs.length === 0 ? (
+        {!isPostsLoaded ? (
+          <div className="col-span-full flex justify-center py-20">
+            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : jobs.length === 0 ? (
           <div className="col-span-full text-center py-16 text-slate-500">
             No government jobs found matching your criteria.
           </div>

@@ -235,87 +235,101 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ setActivePage })
     );
   }
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return;
+    if (!title || isPublishing) return;
+    setIsPublishing(true);
 
-    if (contentType === 'material') {
-      addStudyMaterial({
-        topicName: title,
-        bengaliTopicName: bengaliTitle || undefined,
-        subject: matSubject || organization || 'General Studies',
-        shortDescription: summary,
-        detailedDescription: content,
-        classLevel: qualification || 'All Levels',
-        author: currentUser?.name || 'SDH Admin',
-        language: 'Both',
-        fileUrl: matDriveUrl || officialUrl || 'https://drive.google.com',
-        fileName: title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
-        fileType: 'drive',
-        accessPermission: matAccess,
-        imageUrl: featuredImage.trim() || undefined
-      });
-    } else if (contentType === 'service') {
-      addDigitalService({
-        name: title,
-        bengaliName: bengaliTitle || undefined,
-        category: srvCategory || organization || 'Digital Services',
-        shortDescription: summary,
-        detailedDescription: content,
-        icon: 'MonitorSmartphone',
-        imageUrl: featuredImage.trim() || undefined,
-        eligibility: qualification || 'All Applicants',
-        requiredDocuments: ['Aadhaar Card', 'Academic Mark Sheets', 'Photo Specimen'],
-        process: content || 'Submit details online or visit our hub.',
-        charges: srvCharges || amount || '₹100',
-        processingTime: srvProcessingTime || lastDate || '1 - 2 Days',
-        availability: true,
-        bookingRequired: true,
-        officialWebsite: officialUrl
-      });
+    try {
+      const operations: Promise<void>[] = [];
+
+      if (contentType === 'material') {
+        operations.push(Promise.resolve(addStudyMaterial({
+          topicName: title,
+          bengaliTopicName: bengaliTitle || undefined,
+          subject: matSubject || organization || 'General Studies',
+          shortDescription: summary,
+          detailedDescription: content,
+          classLevel: qualification || 'All Levels',
+          author: currentUser?.name || 'SDH Admin',
+          language: 'Both',
+          fileUrl: matDriveUrl || officialUrl || 'https://drive.google.com',
+          fileName: title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+          fileType: 'drive',
+          accessPermission: matAccess,
+          imageUrl: featuredImage.trim() || undefined
+        })));
+      } else if (contentType === 'service') {
+        operations.push(Promise.resolve(addDigitalService({
+          name: title,
+          bengaliName: bengaliTitle || undefined,
+          category: srvCategory || organization || 'Digital Services',
+          shortDescription: summary,
+          detailedDescription: content,
+          icon: 'MonitorSmartphone',
+          imageUrl: featuredImage.trim() || undefined,
+          eligibility: qualification || 'All Applicants',
+          requiredDocuments: ['Aadhaar Card', 'Academic Mark Sheets', 'Photo Specimen'],
+          process: content || 'Submit details online or visit our hub.',
+          charges: srvCharges || amount || '₹100',
+          processingTime: srvProcessingTime || lastDate || '1 - 2 Days',
+          availability: true,
+          bookingRequired: true,
+          officialWebsite: officialUrl
+        })));
+      }
+
+      operations.push(Promise.resolve(addPost({
+        title,
+        bengaliTitle,
+        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        contentType,
+        summary,
+        bengaliSummary,
+        content,
+        categoryId: contentType === 'material' ? 'cat-5' : contentType === 'service' ? 'cat-6' : 'cat-1',
+        featuredImage: featuredImage.trim() || undefined,
+        authorId: currentUser.id,
+        status: 'published',
+        organization: organization || matSubject || srvCategory,
+        totalVacancies,
+        qualification,
+        lastDate: lastDate || srvProcessingTime,
+        officialUrl: officialUrl || matDriveUrl,
+        applyUrl,
+        amount: amount || srvCharges,
+        examDate
+      })));
+
+      await Promise.all(operations);
+
+      setNewPostModal(false);
+      setTitle('');
+      setBengaliTitle('');
+      setSummary('');
+      setBengaliSummary('');
+      setContent('');
+      setOrganization('');
+      setTotalVacancies('');
+      setQualification('');
+      setLastDate('');
+      setOfficialUrl('');
+      setApplyUrl('');
+      setAmount('');
+      setExamDate('');
+      setMatSubject('');
+      setMatDriveUrl('');
+      setSrvCategory('');
+      setSrvCharges('');
+      setFeaturedImage('');
+    } catch (err) {
+      console.error('Failed to publish post:', err);
+      alert('Failed to publish post. Please check your connection and try again.');
+    } finally {
+      setIsPublishing(false);
     }
-
-    addPost({
-      title,
-      bengaliTitle,
-      slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      contentType,
-      summary,
-      bengaliSummary,
-      content,
-      categoryId: contentType === 'material' ? 'cat-5' : contentType === 'service' ? 'cat-6' : 'cat-1',
-      featuredImage: featuredImage.trim() || undefined,
-      authorId: currentUser.id,
-      status: 'published',
-      organization: organization || matSubject || srvCategory,
-      totalVacancies,
-      qualification,
-      lastDate: lastDate || srvProcessingTime,
-      officialUrl: officialUrl || matDriveUrl,
-      applyUrl,
-      amount: amount || srvCharges,
-      examDate
-    });
-
-    setNewPostModal(false);
-    setTitle('');
-    setBengaliTitle('');
-    setSummary('');
-    setBengaliSummary('');
-    setContent('');
-    setOrganization('');
-    setTotalVacancies('');
-    setQualification('');
-    setLastDate('');
-    setOfficialUrl('');
-    setApplyUrl('');
-    setAmount('');
-    setExamDate('');
-    setMatSubject('');
-    setMatDriveUrl('');
-    setSrvCategory('');
-    setSrvCharges('');
-    setFeaturedImage('');
   };
 
   const handleCreateTemplate = (e: React.FormEvent) => {
